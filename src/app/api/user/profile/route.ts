@@ -76,7 +76,6 @@ export async function PUT(request: Request) {
         address,
         gender,
         profilePicture,
-        updatedAt: new Date(),
       },
       { new: true, runValidators: true }
     ).select("-password");

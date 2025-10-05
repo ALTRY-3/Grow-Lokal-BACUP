@@ -603,6 +603,21 @@ export default function ProfilePage() {
       const data = await response.json();
 
       if (data.success) {
+        // Update local state with saved data
+        if (data.data) {
+          setFullName(data.data.fullName || "");
+          setPhone(data.data.phone || "");
+          setStreet(data.data.address?.street || "");
+          setBarangay(data.data.address?.barangay || "");
+          setCity(data.data.address?.city || "");
+          setProvince(data.data.address?.province || "");
+          setRegion(data.data.address?.region || "");
+          setPostal(data.data.address?.postalCode || "");
+          setSelectedGender(data.data.gender || "");
+          if (data.data.profilePicture) {
+            setProfilePicture(data.data.profilePicture);
+          }
+        }
         setShowSaveModal(true);
         setTimeout(() => setShowSaveModal(false), 2000);
       } else {
@@ -635,27 +650,51 @@ export default function ProfilePage() {
     }
 
     try {
+      // Upload the image first
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await fetch("/api/upload", {
+      const uploadResponse = await fetch("/api/upload", {
         method: "POST",
         body: formData,
       });
 
-      const data = await response.json();
+      const uploadData = await uploadResponse.json();
 
-      if (data.success) {
-        setProfilePicture(data.data.url);
-
-        // Update user profile with new picture
-        await fetch("/api/user/profile", {
+      if (uploadData.success) {
+        const newProfilePicture = uploadData.data.url;
+        
+        // Update user profile with new picture AND all other fields
+        const updateResponse = await fetch("/api/user/profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ profilePicture: data.data.url }),
+          body: JSON.stringify({
+            fullName,
+            phone,
+            address: {
+              street,
+              barangay,
+              city,
+              province,
+              region,
+              postalCode: postal,
+            },
+            gender: selectedGender,
+            profilePicture: newProfilePicture,
+          }),
         });
+
+        const updateData = await updateResponse.json();
+
+        if (updateData.success) {
+          // Update local state
+          setProfilePicture(newProfilePicture);
+          alert("Profile picture updated successfully!");
+        } else {
+          alert(updateData.message || "Failed to update profile picture");
+        }
       } else {
-        alert(data.message || "Failed to upload image");
+        alert(uploadData.message || "Failed to upload image");
       }
     } catch (error) {
       console.error("Upload error:", error);
@@ -1003,7 +1042,7 @@ export default function ProfilePage() {
               <div className="profile-details-inner-box">
                 <div className="profile-upload-section">
                   <img
-                    src="/default-profile.jpg"
+                    src={profilePicture}
                     alt="User"
                     className="profile-upload-image"
                     id="profilePreview"
@@ -1013,9 +1052,24 @@ export default function ProfilePage() {
                     id="profileUpload"
                     accept="image/*"
                     className="profile-upload-input"
-                    onChange={(e) => {
+                    onChange={async (e) => {
                       const file = e.target.files?.[0];
-                      if (file) {
+                      if (!file) return;
+
+                      // Validate file type
+                      if (!file.type.startsWith("image/")) {
+                        alert("Please select an image file");
+                        return;
+                      }
+
+                      // Validate file size (1MB = 1048576 bytes)
+                      if (file.size > 1048576) {
+                        alert("Image too large. Maximum size is 1MB");
+                        return;
+                      }
+
+                      try {
+                        // Show preview immediately
                         const reader = new FileReader();
                         reader.onload = (event) => {
                           const img = document.getElementById(
@@ -1026,6 +1080,56 @@ export default function ProfilePage() {
                           }
                         };
                         reader.readAsDataURL(file);
+
+                        // Upload the image to server
+                        const formData = new FormData();
+                        formData.append("file", file);
+
+                        const uploadResponse = await fetch("/api/upload", {
+                          method: "POST",
+                          body: formData,
+                        });
+
+                        const uploadData = await uploadResponse.json();
+
+                        if (uploadData.success) {
+                          const newProfilePicture = uploadData.data.url;
+                          
+                          // Update user profile with new picture AND all other fields
+                          const updateResponse = await fetch("/api/user/profile", {
+                            method: "PUT",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              fullName,
+                              phone,
+                              address: {
+                                street,
+                                barangay,
+                                city,
+                                province,
+                                region,
+                                postalCode: postal,
+                              },
+                              gender: selectedGender,
+                              profilePicture: newProfilePicture,
+                            }),
+                          });
+
+                          const updateData = await updateResponse.json();
+
+                          if (updateData.success) {
+                            // Update local state
+                            setProfilePicture(newProfilePicture);
+                            alert("Profile picture updated successfully!");
+                          } else {
+                            alert(updateData.message || "Failed to update profile picture");
+                          }
+                        } else {
+                          alert(uploadData.message || "Failed to upload image");
+                        }
+                      } catch (error) {
+                        console.error("Upload error:", error);
+                        alert("Failed to upload image");
                       }
                     }}
                   />
