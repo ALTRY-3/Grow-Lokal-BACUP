@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import { FaTimes, FaStar } from "react-icons/fa";
+import { FaTimes, FaStar, FaHeart, FaRegHeart } from "react-icons/fa";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 
@@ -17,9 +17,13 @@ interface Product {
 export default function ProductModal({
   product,
   onClose,
+  isInWishlist = false,
+  onToggleWishlist,
 }: {
   product: Product;
   onClose: () => void;
+  isInWishlist?: boolean;
+  onToggleWishlist?: () => void;
 }) {
   const [mainImage, setMainImage] = useState(product.img);
   const [quantity, setQuantity] = useState(1);
@@ -131,18 +135,36 @@ export default function ProductModal({
               <p>{reviews > 0 ? `${reviews} review(s)` : "No reviews yet"}</p>
             </div>
 
-            <button 
-              className="add-to-cart-btn"
-              onClick={handleAddToCart}
-              disabled={adding || !product.productId || addSuccess}
-              style={{
-                backgroundColor: addSuccess ? '#10b981' : undefined,
-                cursor: (adding || !product.productId) ? 'not-allowed' : 'pointer',
-                opacity: (adding || !product.productId) ? 0.6 : 1
-              }}
-            >
-              {adding ? 'Adding...' : addSuccess ? '✓ Added!' : 'Add to Cart'}
-            </button>
+            {/* Action buttons container */}
+            <div className="modal-action-buttons">
+              {/* Wishlist button */}
+              {onToggleWishlist && (
+                <button 
+                  className="modal-wishlist-btn-inline"
+                  onClick={onToggleWishlist}
+                  aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                >
+                  {isInWishlist ? (
+                    <FaHeart style={{ color: '#e74c3c' }} />
+                  ) : (
+                    <FaRegHeart />
+                  )}
+                </button>
+              )}
+
+              <button 
+                className="add-to-cart-btn"
+                onClick={handleAddToCart}
+                disabled={adding || !product.productId || addSuccess}
+                style={{
+                  backgroundColor: addSuccess ? '#10b981' : undefined,
+                  cursor: (adding || !product.productId) ? 'not-allowed' : 'pointer',
+                  opacity: (adding || !product.productId) ? 0.6 : 1
+                }}
+              >
+                {adding ? 'Adding...' : addSuccess ? '✓ Added!' : 'Add to Cart'}
+              </button>
+            </div>
           </div>
         </div>
 

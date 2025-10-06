@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import { DivIcon } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "./map.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -102,7 +102,7 @@ export default function MapContent() {
     return matchesSearch && matchesDate && matchesRadius;
   });
 
-  const customIcon = new DivIcon({
+  const customIcon = L.divIcon({
     className: "custom-pin",
     html: `
       <svg xmlns="http://www.w3.org/2000/svg" width="32" height="48" viewBox="0 0 24 36">
@@ -169,20 +169,19 @@ export default function MapContent() {
       </div>
 
       <MapContainer
+        // @ts-ignore - react-leaflet v5 type definitions
         center={center}
         zoom={14}
         scrollWheelZoom={true}
         className="h-full w-full"
+        style={{ height: '100%', width: '100%' }}
       >
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          options={{
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          }}
         />
 
         {filteredEvents.map((event, idx) => (
+          // @ts-ignore - react-leaflet v5 type definitions
           <Marker key={idx} position={[event.lat, event.lng]} icon={customIcon}>
             <Popup>
               <div className="popup-card">
@@ -219,3 +218,4 @@ export default function MapContent() {
     </>
   );
 }
+

@@ -170,6 +170,18 @@ export const authOptions: NextAuthOptions = {
         session.user.name = token.name as string;
         session.user.image = token.image as string;
         
+        // Fetch seller status from database
+        try {
+          await connectDB();
+          const user = await User.findById(token.id).select('isSeller sellerProfile');
+          if (user) {
+            (session.user as any).isSeller = user.isSeller || false;
+            (session.user as any).shopName = user.sellerProfile?.shopName || null;
+          }
+        } catch (error) {
+          console.error("Error fetching seller status in session:", error);
+        }
+        
         // Set session expiration based on rememberMe
         const rememberMe = token.rememberMe as boolean;
         if (rememberMe) {

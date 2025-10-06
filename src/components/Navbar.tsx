@@ -269,7 +269,9 @@ export default function Navbar() {
                     <div className="cart-actions">
                       <button 
                         className="btn-secondary"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setShowCart(false);
                           router.push('/cart');
                         }}
@@ -278,9 +280,13 @@ export default function Navbar() {
                       </button>
                       <button 
                         className="btn-primary"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setShowCart(false);
-                          router.push('/checkout');
+                          setTimeout(() => {
+                            router.push('/checkout');
+                          }, 100);
                         }}
                       >
                         Checkout

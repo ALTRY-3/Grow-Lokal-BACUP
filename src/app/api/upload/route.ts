@@ -8,6 +8,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const file = formData.get("file") as File;
+    const folder = formData.get("folder") as string || "profiles"; // Default to profiles
 
     if (!file) {
       return NextResponse.json(
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
     const filename = `${uuidv4()}.${fileExt}`;
     
     // Ensure upload directory exists
-    const uploadDir = join(process.cwd(), "public", "uploads", "profiles");
+    const uploadDir = join(process.cwd(), "public", "uploads", folder);
     if (!existsSync(uploadDir)) {
       await mkdir(uploadDir, { recursive: true });
     }
@@ -54,8 +55,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       message: "File uploaded successfully",
+      url: `/uploads/${folder}/${filename}`, // Return URL directly for easier access
       data: {
-        url: `/uploads/profiles/${filename}`,
+        url: `/uploads/${folder}/${filename}`,
       },
     });
   } catch (error: any) {

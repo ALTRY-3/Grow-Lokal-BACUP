@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/models/Product';
+import User from '@/models/User';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import mongoose from 'mongoose';
@@ -53,7 +54,7 @@ export async function GET(
   }
 }
 
-// PUT /api/products/[id] - Update product (requires authentication)
+// PUT /api/products/[id] - Update product (requires seller authentication)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -61,14 +62,24 @@ export async function PUT(
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, message: 'Authentication required' },
         { status: 401 }
       );
     }
 
     await connectDB();
+
+    // Get user and verify seller status
+    const user = await User.findOne({ email: session.user.email });
+    
+    if (!user || user.sellerProfile?.applicationStatus !== 'approved') {
+      return NextResponse.json(
+        { success: false, message: 'Seller approval required' },
+        { status: 403 }
+      );
+    }
 
     const { id } = params;
 
@@ -80,27 +91,39 @@ export async function PUT(
       );
     }
 
-    const product = await Product.findById(id);
+    // Find product and verify ownership
+    const product = await Product.findOne({
+      _id: id,
+      artistId: user._id
+    });
 
     if (!product) {
       return NextResponse.json(
-        { success: false, message: 'Product not found' },
+        { success: false, message: 'Product not found or access denied' },
         { status: 404 }
       );
     }
 
-    // Check if user is the owner or admin
-    // TODO: Add proper role-based authorization
-    // For now, anyone authenticated can update (you should restrict this)
-    
     const body = await request.json();
 
     // Update product
     const updatedProduct = await Product.findByIdAndUpdate(
       id,
-      { $set: body },
+      { 
+        $set: {
+          ...body,
+          updatedAt: new Date()
+        }
+      },
       { new: true, runValidators: true }
     ).select('-__v');
+
+    if (!updatedProduct) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to update product' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -130,22 +153,32 @@ export async function PUT(
   }
 }
 
-// DELETE /api/products/[id] - Delete product (requires authentication)
-export async function DELETE(
+// PATCH /api/products/[id] - Partially update product (requires seller authentication)
+export async function PATCH(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions);
-    if (!session || !session.user) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { success: false, message: 'Unauthorized' },
+        { success: false, message: 'Authentication required' },
         { status: 401 }
       );
     }
 
     await connectDB();
+
+    // Get user and verify seller status
+    const user = await User.findOne({ email: session.user.email });
+    
+    if (!user || user.sellerProfile?.applicationStatus !== 'approved') {
+      return NextResponse.json(
+        { success: false, message: 'Seller approval required' },
+        { status: 403 }
+      );
+    }
 
     const { id } = params;
 
@@ -157,23 +190,113 @@ export async function DELETE(
       );
     }
 
-    const product = await Product.findById(id);
+    // Find product and verify ownership
+    const product = await Product.findOne({
+      _id: id,
+      artistId: user._id
+    });
 
     if (!product) {
       return NextResponse.json(
-        { success: false, message: 'Product not found' },
+        { success: false, message: 'Product not found or access denied' },
         { status: 404 }
       );
     }
 
-    // Check if user is the owner or admin
-    // TODO: Add proper role-based authorization
-    
-    // Soft delete - just set isActive to false
-    product.isActive = false;
-    await product.save();
+    const updateData = await request.json();
 
-    // For hard delete, use: await Product.findByIdAndDelete(id);
+    // Update product with only provided fields
+    const updatedProduct = await Product.findByIdAndUpdate(
+      id,
+      {
+        ...updateData,
+        updatedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updatedProduct) {
+      return NextResponse.json(
+        { success: false, message: 'Failed to update product' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Product updated successfully',
+      product: {
+        ...updatedProduct,
+        _id: updatedProduct._id.toString(),
+        artistId: updatedProduct.artistId?.toString()
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error updating product:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        message: 'Failed to update product',
+        error: error.message
+      },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/products/[id] - Delete product (requires seller authentication)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Check authentication
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json(
+        { success: false, message: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    await connectDB();
+
+    // Get user and verify seller status
+    const user = await User.findOne({ email: session.user.email });
+    
+    if (!user || user.sellerProfile?.applicationStatus !== 'approved') {
+      return NextResponse.json(
+        { success: false, message: 'Seller approval required' },
+        { status: 403 }
+      );
+    }
+
+    const { id } = params;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, message: 'Invalid product ID' },
+        { status: 400 }
+      );
+    }
+
+    // Find product and verify ownership
+    const product = await Product.findOne({
+      _id: id,
+      artistId: user._id
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { success: false, message: 'Product not found or access denied' },
+        { status: 404 }
+      );
+    }
+
+    // Hard delete the product
+    await Product.findByIdAndDelete(id);
 
     return NextResponse.json({
       success: true,

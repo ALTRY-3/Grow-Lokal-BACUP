@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Image from "next/image";
 import Navbar from "@/components/Navbar";
+
+// Default profile picture SVG as data URL
+const DEFAULT_PROFILE_PICTURE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='0%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%23e8d5b7;stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:%23d4b896;stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Crect fill='url(%23grad)' width='200' height='200'/%3E%3Ccircle cx='100' cy='80' r='35' fill='%23af7928'/%3E%3Cpath d='M100 120 C70 120, 40 130, 30 160 L170 160 C160 130, 130 120, 100 120 Z' fill='%23af7928'/%3E%3C/svg%3E";
 import Footer from "@/components/Footer";
 import "./profile.css";
 import {
@@ -15,6 +19,8 @@ import {
   FaImage,
   FaStore,
   FaBoxOpen,
+  FaHeart,
+  FaSave,
 } from "react-icons/fa";
 
 const regionProvinceCityData: Record<string, Record<string, string[]>> = {
@@ -141,17 +147,6 @@ const regionList = [
   "Cordillera Administrative Region (CAR)",
   "National Capital Region (NCR)",
 ];
-
-const mockUser = {
-  name: "Venti Batumbakal",
-  email: "venti@gmail.com",
-  phone: "09171234567",
-  street: "14 Harris St",
-  barangay: "East Bajac-Bajac",
-  province: "Zambales",
-  city: "Olongapo",
-  postal: "2200",
-};
 
 const cityBarangayData: Record<string, string[]> = {
   Olongapo: [
@@ -431,10 +426,24 @@ export default function ProfilePage() {
   const [region, setRegion] = useState<string>("");
   const [barangay, setBarangay] = useState<string>("");
   const [selectedGender, setSelectedGender] = useState<string>("");
-  const [profilePicture, setProfilePicture] = useState<string>("/default-profile.jpg");
+  const [profilePicture, setProfilePicture] = useState<string>(DEFAULT_PROFILE_PICTURE);
+  const [isProfilePictureLoaded, setIsProfilePictureLoaded] = useState(false);
+  const [isSeller, setIsSeller] = useState(false); // Track if user is a seller
 
   // Orders Data
   const [orders, setOrders] = useState<any[]>([]);
+
+  // Load cached profile picture on mount (client-side only)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const cachedPicture = localStorage.getItem("cached_profile_picture");
+      if (cachedPicture) {
+        setProfilePicture(cachedPicture);
+      } else if (session?.user?.image) {
+        setProfilePicture(session.user.image);
+      }
+    }
+  }, [session?.user?.image]);
 
   // Auth check
   useEffect(() => {
@@ -445,14 +454,26 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (querySection) {
-      setActiveSection(querySection);
+      // If user is a seller and tries to access "selling", redirect to "myshop"
+      if (querySection === "selling" && isSeller) {
+        setActiveSection("myshop");
+      } else {
+        setActiveSection(querySection);
+      }
+      
       if (querySection === "profile") setExpandedSection("profile");
       else setExpandedSection(null);
     }
-  }, [querySection]);
+  }, [querySection, isSeller]);
 
   const handleSelectSection = (section: string) => {
-    setActiveSection(section);
+    // If user is a seller and tries to access "selling", redirect to "myshop"
+    if (section === "selling" && isSeller) {
+      setActiveSection("myshop");
+    } else {
+      setActiveSection(section);
+    }
+    
     if (section !== "profile") setExpandedSection(null);
     else setExpandedSection("profile");
   };
@@ -479,7 +500,12 @@ export default function ProfilePage() {
       setProfileError("");
       
       try {
-        const response = await fetch("/api/user/profile");
+        const response = await fetch("/api/user/profile", {
+          // Add cache control for faster subsequent loads
+          headers: {
+            'Cache-Control': 'max-age=300', // Cache for 5 minutes
+          }
+        });
         const data = await response.json();
 
         if (data.success) {
@@ -493,14 +519,37 @@ export default function ProfilePage() {
           setRegion(data.data.address.region || "");
           setPostal(data.data.address.postalCode || "");
           setSelectedGender(data.data.gender || "");
-          setProfilePicture(data.data.profilePicture || "/default-profile.jpg");
+          
+          // Only update profile picture if we have a new one
+          const newProfilePicture = data.data.profilePicture || session?.user?.image || "";
+          if (newProfilePicture && newProfilePicture !== profilePicture) {
+            // Preload the image before setting it
+            const img = document.createElement('img');
+            img.onload = () => {
+              setProfilePicture(newProfilePicture);
+              // Cache in localStorage for instant load next time
+              if (typeof window !== "undefined") {
+                localStorage.setItem("cached_profile_picture", newProfilePicture);
+              }
+              setIsProfilePictureLoaded(true);
+            };
+            img.onerror = () => {
+              setIsProfilePictureLoaded(true);
+            };
+            img.src = newProfilePicture;
+          } else {
+            setIsProfilePictureLoaded(true);
+          }
+          
           setIsSeller(data.data.isSeller || false);
         } else {
           setProfileError(data.message || "Failed to load profile");
+          setIsProfilePictureLoaded(true);
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
         setProfileError("Failed to load profile");
+        setIsProfilePictureLoaded(true);
       } finally {
         setIsLoadingProfile(false);
       }
@@ -508,6 +557,145 @@ export default function ProfilePage() {
 
     fetchProfile();
   }, [session]);
+
+  // Fetch seller profile if user is a seller
+  const fetchSellerProfile = async () => {
+    try {
+      console.log("Fetching seller profile...");
+      const response = await fetch("/api/seller/profile");
+      const data = await response.json();
+      
+      console.log("Seller profile response:", data);
+      
+      if (data.success && data.data) {
+        console.log("Setting seller profile state:", {
+          shopName: data.data.shopName,
+          sellerStoryTitle: data.data.sellerStoryTitle,
+          sellerStory: data.data.sellerStory?.substring(0, 50)
+        });
+        
+        // Update all seller-related state
+        setShopName(data.data.shopName || "");
+        setBusinessType(data.data.businessType || "");
+        setShopDescription(data.data.shopDescription || "");
+        setPickupBarangay(data.data.pickupAddress?.barangay || "");
+        setPickupAddress(data.data.pickupAddress?.otherDetails || "");
+        setShopEmail(data.data.shopEmail || "");
+        setShopPhone(data.data.shopPhone || "");
+        setSocialMediaLinks(data.data.socialMediaLinks || {});
+        setSellerStoryTitle(data.data.sellerStoryTitle || "");
+        setSellerStory(data.data.sellerStory || "");
+        
+        // Set seller photo preview if available
+        if (data.data.sellerPhoto) {
+          const previewEl = document.getElementById("sellerPhotoPreview") as HTMLImageElement;
+          if (previewEl) {
+            previewEl.src = data.data.sellerPhoto;
+          }
+        }
+      } else {
+        console.log("Failed to fetch seller profile:", data.message);
+      }
+    } catch (error) {
+      console.error("Error fetching seller profile:", error);
+    }
+  };
+
+  // Fetch seller profile when isSeller is true or when activeSection is myshop
+  useEffect(() => {
+    if (isSeller && session?.user) {
+      fetchSellerProfile();
+    }
+  }, [isSeller, session?.user]);
+  
+  // Also fetch when navigating to myshop section
+  useEffect(() => {
+    if (activeSection === "myshop" && isSeller && session?.user) {
+      fetchSellerProfile();
+    }
+  }, [activeSection]);
+
+  // Submit seller application
+  const handleSubmitSellerApplication = async () => {
+    try {
+      // Upload valid ID first if not already uploaded
+      let validIdFileUrl = "";
+      if (validIdFile) {
+        const formData = new FormData();
+        formData.append("file", validIdFile);
+        
+        const uploadResponse = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        
+        const uploadData = await uploadResponse.json();
+        if (!uploadData.success) {
+          alert("Failed to upload valid ID");
+          return;
+        }
+        validIdFileUrl = uploadData.data.url;
+      }
+
+      // Get seller photo URL
+      const sellerPhotoEl = document.getElementById("sellerPhotoPreview") as HTMLImageElement;
+      const sellerPhotoUrl = sellerPhotoEl?.src || "";
+
+      // Prepare application data
+      const applicationData = {
+        shopName,
+        businessType,
+        shopDescription: "", // Empty string since field was removed
+        pickupAddress: {
+          barangay: pickupBarangay,
+          otherDetails: pickupAddress
+        },
+        shopEmail,
+        shopPhone,
+        socialMediaLinks,
+        sellerStoryTitle,
+        sellerStory,
+        sellerPhoto: sellerPhotoUrl,
+        validIdUrl: validIdFileUrl,
+        agreedToTerms,
+        agreedToCommission,
+        agreedToShipping
+      };
+
+      // Submit application
+      const response = await fetch("/api/seller/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(applicationData)
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Update seller status immediately
+        setIsSeller(true);
+        
+        // Show success modal
+        setShowSubmitModal(true);
+        
+        // Reload the page to update all UI elements
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500); // Wait 1.5 seconds to let user see success modal
+        
+        return true;
+      } else {
+        alert(data.message || "Failed to submit application");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      alert("Failed to submit application. Please try again.");
+      return false;
+    }
+  };
 
   // Fetch orders
   useEffect(() => {
@@ -689,6 +877,10 @@ export default function ProfilePage() {
         if (updateData.success) {
           // Update local state
           setProfilePicture(newProfilePicture);
+          // Update cache
+          if (typeof window !== "undefined") {
+            localStorage.setItem("cached_profile_picture", newProfilePicture);
+          }
           alert("Profile picture updated successfully!");
         } else {
           alert(updateData.message || "Failed to update profile picture");
@@ -848,6 +1040,7 @@ export default function ProfilePage() {
   const [pickupAddress, setPickupAddress] = useState("");
   const [pickupOther, setPickupOther] = useState("");
   const [shopEmail, setShopEmail] = useState("");
+  const [shopPhone, setShopPhone] = useState("");
   const [sellerStory, setSellerStory] = useState("");
 
   const [pickupBarangay, setPickupBarangay] = useState("");
@@ -859,7 +1052,83 @@ export default function ProfilePage() {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const [validIdFile, setValidIdFile] = useState<File | null>(null);
-  const [isSeller, setIsSeller] = useState(false); // Track if user is now a seller
+
+  const [sellerStoryTitle, setSellerStoryTitle] = useState("");
+
+  // New enhanced fields
+  const [businessType, setBusinessType] = useState("");
+  const [shopDescription, setShopDescription] = useState("");
+  const [businessHours, setBusinessHours] = useState({
+    monday: { open: "09:00", close: "17:00", enabled: true },
+    tuesday: { open: "09:00", close: "17:00", enabled: true },
+    wednesday: { open: "09:00", close: "17:00", enabled: true },
+    thursday: { open: "09:00", close: "17:00", enabled: true },
+    friday: { open: "09:00", close: "17:00", enabled: true },
+    saturday: { open: "09:00", close: "17:00", enabled: false },
+    sunday: { open: "09:00", close: "17:00", enabled: false },
+  });
+  const [byAppointment, setByAppointment] = useState(false);
+  const [socialMediaLinks, setSocialMediaLinks] = useState({
+    facebook: "",
+    instagram: "",
+    tiktok: "",
+  });
+  const [specializations, setSpecializations] = useState<string[]>([]);
+  const [yearsOfExperience, setYearsOfExperience] = useState("");
+  const [productionCapacity, setProductionCapacity] = useState("");
+  const [shippingOptions, setShippingOptions] = useState({
+    pickupOnly: true,
+    localDelivery: false,
+    nationwide: false,
+    international: false,
+  });
+  const [deliveryRadius, setDeliveryRadius] = useState("");
+  const [sellerPhotos, setSellerPhotos] = useState<File[]>([]);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [agreedToCommission, setAgreedToCommission] = useState(false);
+  const [agreedToShipping, setAgreedToShipping] = useState(false);
+
+  // Validation functions for each step
+  const isStep1Valid = () => {
+    const validations = {
+      shopName: shopName.trim().length >= 3 && shopName.trim().length <= 50,
+      businessType: businessType.trim() !== "",
+      pickupBarangay: pickupBarangay.trim() !== "",
+      pickupAddress: pickupAddress.trim() !== "",
+      shopEmail: shopEmail.trim() !== "" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shopEmail),
+      shopPhone: shopPhone.trim().length === 11 && /^[0-9]+$/.test(shopPhone),
+      validIdFile: validIdFile !== null
+    };
+    
+    const isValid = Object.values(validations).every(v => v === true);
+    
+    if (!isValid) {
+      console.log("Step 1 Validation Status:", validations);
+      console.log("Current values:", {
+        shopName: shopName,
+        businessType: businessType,
+        shopPhone: shopPhone,
+        shopEmail: shopEmail,
+        pickupBarangay: pickupBarangay,
+        pickupAddress: pickupAddress,
+        validIdFile: validIdFile?.name
+      });
+    }
+    
+    return isValid;
+  };
+
+  const isStep2Valid = () => {
+    return (
+      sellerStoryTitle.trim() !== "" &&
+      sellerStory.trim().length >= 10 &&
+      sellerStory.trim().length <= 1000
+    );
+  };
+
+  const isStep3Valid = () => {
+    return agreedToTerms && agreedToCommission && agreedToShipping;
+  };
 
   const modalOverlayStyle: React.CSSProperties = {
     position: "fixed",
@@ -897,13 +1166,33 @@ export default function ProfilePage() {
     marginBottom: "20px",
   };
 
-  const isShopInfoComplete =
-    shopName.trim() &&
-    pickupBarangay.trim() &&
-    pickupAddress.trim() &&
-    shopEmail.trim() &&
-    phone.trim() &&
-    validIdFile;
+  // Check if shop info is complete for saving
+  const isShopInfoComplete = () => {
+    const complete = shopName.trim().length >= 3 &&
+      shopName.trim().length <= 50 &&
+      businessType.trim() !== "" &&
+      pickupBarangay.trim() !== "" &&
+      pickupAddress.trim() !== "" &&
+      shopEmail.trim() !== "" &&
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shopEmail) &&
+      shopPhone.trim().length === 11 &&
+      /^[0-9]+$/.test(shopPhone) &&
+      validIdFile !== null;
+    
+    if (!complete) {
+      console.log("Shop info incomplete. Current state:", {
+        shopName: `${shopName.length} chars (need 3-50)`,
+        businessType: businessType || "EMPTY",
+        pickupBarangay: pickupBarangay || "EMPTY",
+        pickupAddress: pickupAddress || "EMPTY",
+        shopEmail: shopEmail || "EMPTY",
+        shopPhone: `${shopPhone} (${shopPhone.length} digits, need 11)`,
+        validIdFile: validIdFile?.name || "NO FILE"
+      });
+    }
+    
+    return complete;
+  };
 
   return (
     <>
@@ -916,9 +1205,23 @@ export default function ProfilePage() {
             <>
               <div className="profile-picture">
                 <img
-                  src={profilePicture}
+                  src={profilePicture || session?.user?.image || DEFAULT_PROFILE_PICTURE}
                   alt="Profile"
-                  style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }}
+                  style={{ 
+                    width: "100%", 
+                    height: "100%", 
+                    borderRadius: "50%", 
+                    objectFit: "cover",
+                    transition: "opacity 0.3s ease"
+                  }}
+                  loading="eager"
+                  fetchPriority="high"
+                  onLoad={(e) => {
+                    e.currentTarget.style.opacity = "1";
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.src = DEFAULT_PROFILE_PICTURE;
+                  }}
                 />
                 <label className="profile-upload-label" htmlFor="profile-upload-input">
                   <FaEdit style={{ fontSize: "16px", color: "#af7928" }} />
@@ -994,30 +1297,46 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Start Selling / My Shop toggle in sidebar */}
+          {/* Wishlist */}
           <div className="profile-section">
             <div
-              // when user is a seller, this nav item becomes "myshop"
               className={`profile-section-row ${
-                activeSection === (isSeller ? "myshop" : "selling")
-                  ? "active"
-                  : ""
+                activeSection === "wishlist" ? "active" : ""
               }`}
-              onClick={() =>
-                handleSelectSection(isSeller ? "myshop" : "selling")
-              }
+              onClick={() => handleSelectSection("wishlist")}
               tabIndex={0}
             >
-              {isSeller ? (
-                <FaStore className="profile-section-icon" />
-              ) : (
-                <FaTags className="profile-section-icon" />
-              )}
-              <span className="profile-section-title">
-                {isSeller ? "My Shop" : "Start Selling"}
-              </span>
+              <FaHeart className="profile-section-icon" />
+              <span className="profile-section-title">My Wishlist</span>
             </div>
           </div>
+
+          {/* Start Selling / My Shop toggle in sidebar */}
+          {!isLoadingProfile && (
+            <div className="profile-section">
+              <div
+                // when user is a seller, this nav item becomes "myshop"
+                className={`profile-section-row ${
+                  activeSection === (isSeller ? "myshop" : "selling")
+                    ? "active"
+                    : ""
+                }`}
+                onClick={() =>
+                  handleSelectSection(isSeller ? "myshop" : "selling")
+                }
+                tabIndex={0}
+              >
+                {isSeller ? (
+                  <FaStore className="profile-section-icon" />
+                ) : (
+                  <FaTags className="profile-section-icon" />
+                )}
+                <span className="profile-section-title">
+                  {isSeller ? "My Shop" : "Start Selling"}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Details Section */}
@@ -1042,7 +1361,11 @@ export default function ProfilePage() {
               <div className="profile-details-inner-box">
                 <div className="profile-upload-section">
                   <img
-                    src={profilePicture}
+                    src={profilePicture || session?.user?.image || DEFAULT_PROFILE_PICTURE}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_PROFILE_PICTURE;
+                    }}
                     alt="User"
                     className="profile-upload-image"
                     id="profilePreview"
@@ -1505,161 +1828,39 @@ export default function ProfilePage() {
                   </div>
                 )}
 
+                {/* Orders will be dynamically rendered from API */}
                 <div className="orders-content">
-                  <div className="order-card">
-                    <div className="order-header">
-                      <div className="order-shop">
-                        <button
-                          type="button"
-                          className="view-store-btn"
-                          onClick={() => {
-                            alert("Go to store");
-                          }}
-                        >
-                          <i className="fas fa-store"></i>
-                          View Store
-                        </button>
-                      </div>
-
-                      <div className="order-status-wrapper">
-                        {activeOrdersTab === "To Ship" && (
-                          <span className="order-status-msg left">
-                            <i className="fas fa-box-open"></i> Seller is
-                            preparing your order...
-                          </span>
-                        )}
-                        {activeOrdersTab === "To Receive" && (
-                          <span className="order-status-msg left">
-                            <i className="fas fa-truck-fast"></i> You order is
-                            on the way...
-                          </span>
-                        )}
-                        {activeOrdersTab === "Completed" && (
-                          <span className="order-status-msg left delivered">
-                            <i className="fas fa-truck"></i> Parcel has been
-                            delivered
-                          </span>
-                        )}
-
-                        <span className="order-status">{activeOrdersTab}</span>
-                      </div>
-                    </div>
-
-                    <div className="order-body">
-                      <img
-                        src="/box1.png"
-                        alt="Acacia Wood Deep Round Plate"
-                        className="order-product-img"
-                      />
-                      <div className="order-details">
-                        <p className="order-artist">RICHEL MARIBE</p>
-                        <p className="order-product-name">
-                          Acacia Wood Deep Round Plate
-                        </p>
-                        <p className="order-product-qty">Qty: 1</p>
-
-                        {activeOrdersTab === "Completed" && (
-                          <div className="order-rating">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <span
-                                key={star}
-                                className={`star${
-                                  star <= (orderRatings["order-123"] || 0)
-                                    ? " filled"
-                                    : ""
-                                }`}
-                                onClick={() =>
-                                  setOrderRatings((prev) => ({
-                                    ...prev,
-                                    ["order-123"]: star,
-                                  }))
-                                }
-                                style={{
-                                  cursor: "pointer",
-                                  fontSize: "18px",
-                                  color:
-                                    star <= (orderRatings["order-123"] || 0)
-                                      ? "#FFC46B"
-                                      : "#ccc",
-                                  transition: "color 0.2s",
-                                }}
-                                title={`Rate ${star} star${
-                                  star > 1 ? "s" : ""
-                                }`}
-                              >
-                                ★
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="order-price">
-                        {activeOrdersTab === "To Pay"
-                          ? "Amount Payable: ₱1211"
-                          : activeOrdersTab === "Completed"
-                          ? "Order Total: ₱149.00"
-                          : "₱149.00"}
-                      </div>
-                    </div>
-
-                    {/* Footer buttons */}
-                    <div className="order-footer">
-                      {activeOrdersTab === "To Pay" && (
-                        <>
-                          <button className="order-btn-pending">Pending</button>
-                          <button className="order-btn primary">
-                            Cancel Order
-                          </button>
-                        </>
-                      )}
-
-                      {activeOrdersTab === "To Ship" && (
-                        <button className="order-btn">View Details</button>
-                      )}
-
-                      {activeOrdersTab === "To Receive" && (
-                        <button
-                          className="order-btn primary"
-                          onClick={() => handleConfirmReceipt("order-123")}
-                          disabled={loadingConfirm}
-                        >
-                          {loadingConfirm ? "Confirming..." : "Confirm Receipt"}
-                        </button>
-                      )}
-
-                      {activeOrdersTab === "Completed" && (
-                        <>
-                          <button className="order-btn">Buy Again</button>
-
-                          {!orderRatings["order-123"] &&
-                          confirmedOrders.has("order-123") ? (
-                            <button
-                              className="order-btn primary"
-                              onClick={() =>
-                                setOrderRatings((prev) => ({
-                                  ...prev,
-                                  ["order-123"]: 0,
-                                }))
-                              }
-                            >
-                              Rate Order
-                            </button>
-                          ) : null}
-                        </>
-                      )}
-
-                      {activeOrdersTab === "Cancelled" && (
-                        <button className="order-btn primary">Buy Again</button>
-                      )}
-                    </div>
-                  </div>
+                  {/* Orders from database will appear here */}
                 </div>
               </div>
             </>
           )}
 
+          {/* Wishlist Section */}
+          {activeSection === "wishlist" && (
+            <>
+              <div className="profile-details-title">
+                <FaHeart
+                  className="profile-section-icon"
+                  style={{
+                    color: "#FFC46B",
+                    fontSize: "2rem",
+                    marginRight: "16px",
+                    verticalAlign: "middle",
+                  }}
+                />
+                My Wishlist
+                <hr className="profile-details-divider" />
+              </div>
+
+              <div className="profile-details-inner-box">
+                <WishlistContent />
+              </div>
+            </>
+          )}
+
           {/* Selling Section */}
-          {activeSection === "selling" && (
+          {activeSection === "selling" && !isSeller && (
             <>
               <div className="profile-details-title">
                 <FaTags
@@ -1681,23 +1882,38 @@ export default function ProfilePage() {
                   {["Shop Information", "Seller Story", "Submit"].map(
                     (label, i) => {
                       const isActive = i === activeStep;
+                      const isCompleted = i < activeStep;
                       return (
                         <React.Fragment key={label}>
-                          <div className="progress-step">
+                          <div className="progress-step" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
                             <div
                               className="circle"
                               style={{
-                                backgroundColor: isActive
-                                  ? "#AF7928"
-                                  : "rgba(0,0,0,0.25)",
+                                backgroundColor: isCompleted ? "#4caf50" : isActive ? "#AF7928" : "rgba(0,0,0,0.15)",
+                                width: "40px",
+                                height: "40px",
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                color: "#fff",
+                                fontWeight: "600",
+                                fontSize: "16px",
+                                transition: "all 0.3s ease",
+                                animation: isActive ? "pulse 2s infinite" : "none",
+                                boxShadow: isActive ? "0 0 0 4px rgba(175, 121, 40, 0.2)" : "none",
                               }}
-                            ></div>
+                            >
+                              {isCompleted ? "✓" : i + 1}
+                            </div>
                             <span
                               className="label"
                               style={{
-                                color: isActive
-                                  ? "#AF7928"
-                                  : "rgba(0,0,0,0.25)",
+                                color: isCompleted || isActive ? "#333" : "rgba(0,0,0,0.4)",
+                                fontWeight: isActive ? "600" : "400",
+                                fontSize: "13px",
+                                textAlign: "center",
+                                maxWidth: "100px",
                               }}
                             >
                               {label}
@@ -1706,7 +1922,13 @@ export default function ProfilePage() {
                           {i < 2 && (
                             <div
                               className="progress-line"
-                              style={{ backgroundColor: "rgba(0,0,0,0.25)" }}
+                              style={{
+                                backgroundColor: isCompleted ? "#4caf50" : "rgba(0,0,0,0.15)",
+                                height: "2px",
+                                flex: "1",
+                                marginTop: "-20px",
+                                transition: "all 0.3s ease",
+                              }}
                             ></div>
                           )}
                         </React.Fragment>
@@ -1714,6 +1936,18 @@ export default function ProfilePage() {
                     }
                   )}
                 </div>
+
+                {/* Add keyframes for pulse animation */}
+                <style>{`
+                  @keyframes pulse {
+                    0%, 100% {
+                      transform: scale(1);
+                    }
+                    50% {
+                      transform: scale(1.05);
+                    }
+                  }
+                `}</style>
 
                 <hr
                   style={{
@@ -1733,11 +1967,40 @@ export default function ProfilePage() {
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="Enter your Shop Name"
+                        placeholder="Enter your Shop Name (3-50 characters)"
                         value={shopName}
                         onChange={(e) => setShopName(e.target.value)}
+                        minLength={3}
+                        maxLength={50}
                         required
                       />
+                      {shopName && (
+                        <span style={{ fontSize: "12px", color: "#666", marginLeft: "8px" }}>
+                          {shopName.length}/50
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Business Type */}
+                    <div className="form-row">
+                      <label className="form-label">
+                        Business Type <span style={{ color: "red" }}>*</span>
+                      </label>
+                      <select
+                        className="form-input"
+                        value={businessType}
+                        onChange={(e) => setBusinessType(e.target.value)}
+                        required
+                      >
+                        <option value="">Select your primary category</option>
+                        <option value="Handicrafts">Handicrafts</option>
+                        <option value="Fashion">Fashion & Apparel</option>
+                        <option value="Food">Food & Beverage</option>
+                        <option value="Beauty">Beauty & Wellness</option>
+                        <option value="Home">Home Decor</option>
+                        <option value="Art">Art & Photography</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
 
                     <div className="form-row">
@@ -1802,11 +2065,67 @@ export default function ProfilePage() {
                       <input
                         type="tel"
                         className="form-input"
-                        placeholder="Enter Shop Phone"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="Enter Shop Phone (e.g., 09171234567)"
+                        value={shopPhone}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, ''); // Only allow numbers
+                          if (value.length <= 11) {
+                            setShopPhone(value);
+                          }
+                        }}
+                        maxLength={11}
                         required
                       />
+                      <span style={{ 
+                        fontSize: "12px", 
+                        color: shopPhone.length === 11 ? "#4caf50" : shopPhone.length > 0 ? "#e74c3c" : "#666",
+                        marginLeft: "8px"
+                      }}>
+                        {shopPhone.length}/11 digits {shopPhone.length === 11 && "✓"}
+                      </span>
+                    </div>
+
+                    {/* Social Media Links (Optional) */}
+                    <div style={{ marginTop: "24px", marginBottom: "16px" }}>
+                      <h4 style={{ fontSize: "16px", fontWeight: 600, color: "#AF7928", marginBottom: "12px" }}>
+                        Social Media (Optional)
+                      </h4>
+                      <p style={{ fontSize: "13px", color: "#666", marginBottom: "16px" }}>
+                        Help customers discover more about your brand
+                      </p>
+                      
+                      <div className="form-row">
+                        <label className="form-label">Facebook Page</label>
+                        <input
+                          type="url"
+                          className="form-input"
+                          placeholder="https://facebook.com/yourpage"
+                          value={socialMediaLinks.facebook}
+                          onChange={(e) => setSocialMediaLinks({...socialMediaLinks, facebook: e.target.value})}
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <label className="form-label">Instagram</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="@yourusername"
+                          value={socialMediaLinks.instagram}
+                          onChange={(e) => setSocialMediaLinks({...socialMediaLinks, instagram: e.target.value})}
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <label className="form-label">TikTok</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="@yourusername"
+                          value={socialMediaLinks.tiktok}
+                          onChange={(e) => setSocialMediaLinks({...socialMediaLinks, tiktok: e.target.value})}
+                        />
+                      </div>
                     </div>
 
                     <div className="form-row">
@@ -1947,6 +2266,30 @@ export default function ProfilePage() {
                       </div>
                     </div>
 
+                    {/* Story Title Field */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "32px",
+                      }}
+                    >
+                      <div style={{ flex: "0 0 200px" }}>
+                        <span style={{ color: "red" }}>*</span>
+                        <label className="form-label">Story Title</label>
+                      </div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        style={{ width: "32.5rem" }}
+                        placeholder="Enter story title"
+                        value={sellerStoryTitle}
+                        onChange={(e) => setSellerStoryTitle(e.target.value)}
+                        maxLength={80}
+                        required
+                      />
+                    </div>
+
                     {/* Artist Story Section */}
                     <div
                       style={{
@@ -1980,8 +2323,9 @@ export default function ProfilePage() {
                             boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
                             overflow: "hidden",
                           }}
-                          placeholder="Write your artist story here..."
-                          maxLength={500}
+                          placeholder="Write your artist story here... Share your journey, what inspires you, how you got started, and what makes your work unique."
+                          minLength={10}
+                          maxLength={1000}
                           value={sellerStory}
                           onChange={(e) => {
                             setSellerStory(e.target.value);
@@ -1989,16 +2333,17 @@ export default function ProfilePage() {
                             e.target.style.height =
                               e.target.scrollHeight + "px";
                           }}
+                          required
                         />
                         <span
                           style={{
                             fontSize: "12px",
-                            color: sellerStory.length >= 500 ? "red" : "#888",
+                            color: sellerStory.length >= 1000 ? "red" : sellerStory.length >= 10 ? "#4caf50" : "#888",
                             alignSelf: "flex-end",
                             marginTop: "6px",
                           }}
                         >
-                          {sellerStory.length}/500
+                          {sellerStory.length}/1000 {sellerStory.length >= 10 && sellerStory.length < 1000 && "✓"}
                         </span>
                       </div>
                     </div>
@@ -2007,78 +2352,217 @@ export default function ProfilePage() {
 
                 {activeStep === 2 && (
                   <div className="selling-step-content">
-                    <p>
-                      Review your details before submitting your shop for
-                      approval.
+                    <p style={{ fontSize: "15px", marginBottom: "20px" }}>
+                      Review your details before submitting your shop for approval.
                     </p>
 
+                    {/* What Happens Next Timeline */}
                     <div
                       style={{
-                        marginTop: "16px",
+                        backgroundColor: "#fff9f0",
+                        borderRadius: "8px",
+                        padding: "16px 20px",
+                        border: "1px solid rgba(175, 121, 40, 0.3)",
+                        marginBottom: "24px",
+                      }}
+                    >
+                      <h4 style={{ marginBottom: "12px", color: "#af7928", fontSize: "15px" }}>
+                        📋 What Happens Next?
+                      </h4>
+                      <div style={{ display: "flex", gap: "16px", fontSize: "13px" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: "600", marginBottom: "4px" }}>1. Review</div>
+                          <div style={{ color: "#666" }}>We&apos;ll verify your details within 1-3 business days</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: "600", marginBottom: "4px" }}>2. Approval</div>
+                          <div style={{ color: "#666" }}>You&apos;ll receive an email notification with next steps</div>
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: "600", marginBottom: "4px" }}>3. Start Selling</div>
+                          <div style={{ color: "#666" }}>Add products and start reaching customers!</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Shop Information Card */}
+                    <div
+                      style={{
+                        marginBottom: "16px",
                         backgroundColor: "#faf8f5",
                         borderRadius: "8px",
                         padding: "16px 20px",
                         border: "1px solid rgba(175,121,40,0.2)",
                       }}
                     >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                        <h4 style={{ margin: 0, fontSize: "15px" }}>🏪 Shop Information</h4>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(0)}
+                          style={{
+                            background: "none",
+                            border: "1px solid rgba(175, 121, 40, 0.5)",
+                            borderRadius: "4px",
+                            padding: "4px 12px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            color: "#af7928",
+                          }}
+                        >
+                          Edit
+                        </button>
+                      </div>
+
                       <div style={{ marginBottom: "10px" }}>
                         <strong>Shop Name:</strong>
+                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>{shopName || "—"}</p>
+                      </div>
+
+                      {businessType && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>Business Type:</strong>
+                          <p style={{ margin: "4px 0 0 0", color: "#333" }}>{businessType}</p>
+                        </div>
+                      )}
+
+                      {shopDescription && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>Description:</strong>
+                          <p style={{ margin: "4px 0 0 0", color: "#333" }}>{shopDescription}</p>
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: "10px" }}>
+                        <strong>Pickup Address:</strong>
                         <p style={{ margin: "4px 0 0 0", color: "#333" }}>
-                          {shopName || "—"}
+                          Barangay {pickupBarangay || "—"}, {pickupOther || "—"}
                         </p>
                       </div>
 
                       <div style={{ marginBottom: "10px" }}>
-                        <strong>Barangay:</strong>
-                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>
-                          {pickupBarangay || "—"}
-                        </p>
+                        <strong>Contact Email:</strong>
+                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>{shopEmail || "—"}</p>
                       </div>
 
-                      <div style={{ marginBottom: "10px" }}>
-                        <strong>Other Details:</strong>
-                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>
-                          {pickupOther || "—"}
-                        </p>
-                      </div>
-
-                      <div style={{ marginBottom: "10px" }}>
-                        <strong>Email:</strong>
-                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>
-                          {shopEmail || "—"}
-                        </p>
-                      </div>
-
-                      {/* Add Phone here */}
                       <div style={{ marginBottom: "10px" }}>
                         <strong>Phone:</strong>
-                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>
-                          {phone || "—"}
-                        </p>
+                        <p style={{ margin: "4px 0 0 0", color: "#333" }}>{phone || "—"}</p>
                       </div>
+
+                      {(socialMediaLinks.facebook || socialMediaLinks.instagram || socialMediaLinks.tiktok) && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>Social Media:</strong>
+                          <div style={{ margin: "4px 0 0 0", color: "#333", display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                            {socialMediaLinks.facebook && <span>📘 Facebook</span>}
+                            {socialMediaLinks.instagram && <span>📷 Instagram</span>}
+                            {socialMediaLinks.tiktok && <span>🎵 TikTok</span>}
+                          </div>
+                        </div>
+                      )}
 
                       <div style={{ marginBottom: "10px" }}>
                         <strong>Valid ID:</strong>
                         <p style={{ margin: "4px 0 0 0", color: "#333" }}>
                           {validIdFile ? validIdFile.name : "—"}
                         </p>
-                        <span style={{ fontSize: "12px", color: "#888" }}>
-                          (Must be a clear photo or scan)
-                        </span>
                       </div>
+                    </div>
 
-                      <div>
-                        <strong>Seller Story:</strong>
-                        <p
+                    {/* Seller Story Card */}
+                    <div
+                      style={{
+                        marginBottom: "16px",
+                        backgroundColor: "#faf8f5",
+                        borderRadius: "8px",
+                        padding: "16px 20px",
+                        border: "1px solid rgba(175,121,40,0.2)",
+                      }}
+                    >
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                        <h4 style={{ margin: 0, fontSize: "15px" }}>✨ Your Story</h4>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(1)}
                           style={{
-                            margin: "4px 0 0 0",
-                            color: "#333",
-                            whiteSpace: "pre-line",
+                            background: "none",
+                            border: "1px solid rgba(175, 121, 40, 0.5)",
+                            borderRadius: "4px",
+                            padding: "4px 12px",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            color: "#af7928",
                           }}
                         >
+                          Edit
+                        </button>
+                      </div>
+
+                      {sellerStoryTitle && (
+                        <div style={{ marginBottom: "10px" }}>
+                          <strong>Story Title:</strong>
+                          <p style={{ margin: "4px 0 0 0", color: "#333" }}>{sellerStoryTitle}</p>
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: "10px" }}>
+                        <strong>Your Story:</strong>
+                        <p style={{ margin: "4px 0 0 0", color: "#333", whiteSpace: "pre-line" }}>
                           {sellerStory || "—"}
                         </p>
                       </div>
+                    </div>
+
+                    {/* Seller Agreements */}
+                    <div
+                      style={{
+                        backgroundColor: "#fff",
+                        borderRadius: "8px",
+                        padding: "16px 20px",
+                        border: "1px solid rgba(175,121,40,0.3)",
+                        marginTop: "20px",
+                      }}
+                    >
+                      <h4 style={{ marginBottom: "16px", fontSize: "15px" }}>📝 Seller Agreements</h4>
+
+                      <label style={{ display: "flex", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          style={{ marginTop: "3px", marginRight: "10px", cursor: "pointer" }}
+                          required
+                        />
+                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                          I agree to the <strong>Terms and Conditions</strong> for selling on GrowLokal, including product quality standards and customer service requirements.
+                        </span>
+                      </label>
+
+                      <label style={{ display: "flex", alignItems: "flex-start", marginBottom: "12px", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={agreedToCommission}
+                          onChange={(e) => setAgreedToCommission(e.target.checked)}
+                          style={{ marginTop: "3px", marginRight: "10px", cursor: "pointer" }}
+                          required
+                        />
+                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                          I understand and accept the <strong>commission structure</strong> (platform fee applies to each sale).
+                        </span>
+                      </label>
+
+                      <label style={{ display: "flex", alignItems: "flex-start", cursor: "pointer" }}>
+                        <input
+                          type="checkbox"
+                          checked={agreedToShipping}
+                          onChange={(e) => setAgreedToShipping(e.target.checked)}
+                          style={{ marginTop: "3px", marginRight: "10px", cursor: "pointer" }}
+                          required
+                        />
+                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                          I commit to <strong>timely order fulfillment</strong> and will communicate shipping/pickup details clearly to customers.
+                        </span>
+                      </label>
                     </div>
                   </div>
                 )}
@@ -2091,11 +2575,35 @@ export default function ProfilePage() {
                   }}
                 />
 
+                {/* Field Completion Status Helper */}
+                {activeStep === 0 && !isShopInfoComplete() && (
+                  <div style={{
+                    background: "#fff3cd",
+                    border: "1px solid #ffc107",
+                    borderRadius: "8px",
+                    padding: "12px 16px",
+                    marginBottom: "16px",
+                    fontSize: "13px",
+                    color: "#856404"
+                  }}>
+                    <strong>⚠️ Please complete all required fields:</strong>
+                    <ul style={{ margin: "8px 0 0 20px", lineHeight: "1.8" }}>
+                      {shopName.trim().length < 3 && <li>Shop Name (at least 3 characters)</li>}
+                      {!businessType && <li>Business Type</li>}
+                      {!pickupBarangay && <li>Pickup Barangay</li>}
+                      {!pickupAddress.trim() && <li>Pickup Address Details</li>}
+                      {(!shopEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shopEmail)) && <li>Valid Shop Email</li>}
+                      {(shopPhone.trim().length !== 11 || !/^[0-9]+$/.test(shopPhone)) && <li>Shop Phone (exactly 11 digits)</li>}
+                      {!validIdFile && <li>Valid ID Upload</li>}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="selling-buttons" style={{ marginTop: "24px" }}>
                   <button
                     className="order-btn"
                     onClick={() => {
-                      if (!isShopInfoComplete) {
+                      if (!isShopInfoComplete()) {
                         setShowSaveError(true);
                         return;
                       }
@@ -2103,14 +2611,24 @@ export default function ProfilePage() {
                       setShowSaveError(false);
                       setShowSaveModal(true);
                     }}
-                    disabled={!isShopInfoComplete}
+                    disabled={!isShopInfoComplete()}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minWidth: "50px",
+                      padding: "10px 16px",
+                      opacity: !isShopInfoComplete() ? 0.5 : 1,
+                      cursor: !isShopInfoComplete() ? "not-allowed" : "pointer",
+                    }}
+                    title="Save Progress"
                   >
-                    Save
+                    <FaSave style={{ fontSize: "18px" }} />
                   </button>
 
                   <button
                     className="order-btn primary"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!isSaved) {
                         setShowSaveError(true);
                         return;
@@ -2121,8 +2639,31 @@ export default function ProfilePage() {
                         setActiveStep(activeStep + 1);
                         setIsSaved(false);
                       } else {
-                        setShowSubmitModal(true);
+                        // Submit the application
+                        await handleSubmitSellerApplication();
                       }
+                    }}
+                    disabled={
+                      !isSaved ||
+                      (activeStep === 0 && !isStep1Valid()) ||
+                      (activeStep === 1 && !isStep2Valid()) ||
+                      (activeStep === 2 && !isStep3Valid())
+                    }
+                    style={{
+                      opacity:
+                        !isSaved ||
+                        (activeStep === 0 && !isStep1Valid()) ||
+                        (activeStep === 1 && !isStep2Valid()) ||
+                        (activeStep === 2 && !isStep3Valid())
+                          ? 0.5
+                          : 1,
+                      cursor:
+                        !isSaved ||
+                        (activeStep === 0 && !isStep1Valid()) ||
+                        (activeStep === 1 && !isStep2Valid()) ||
+                        (activeStep === 2 && !isStep3Valid())
+                          ? "not-allowed"
+                          : "pointer",
                     }}
                   >
                     {activeStep < 2 ? "Next" : "Submit"}
@@ -2289,50 +2830,6 @@ export default function ProfilePage() {
               className="myshop-dashboard"
               style={{ display: "flex", gap: "32px" }}
             >
-              {/* Seller Profile Sidebar */}
-              <div
-                className="myshop-profile-sidebar"
-                style={{
-                  minWidth: 220,
-                  maxWidth: 260,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  background: "#fff",
-                  borderRadius: 8,
-                  boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                  padding: "32px 16px",
-                  height: "fit-content",
-                }}
-              >
-                <img
-                  src="/default-profile.jpg"
-                  alt="Seller profile"
-                  style={{
-                    width: 100,
-                    height: 100,
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    marginBottom: 16,
-                  }}
-                />
-                <div
-                  style={{
-                    fontWeight: 600,
-                    fontSize: 18,
-                    color: "#2e3f36",
-                    marginBottom: 4,
-                  }}
-                >
-                  {fullName}
-                </div>
-                <div style={{ fontSize: 14, color: "#888", marginBottom: 8 }}>
-                  {shopEmail}
-                </div>
-                <div style={{ fontSize: 14, color: "#888" }}>{phone}</div>
-              </div>
-
-              {/* Main Shop Content */}
               <div
                 style={{
                   flex: 1,
@@ -2341,20 +2838,48 @@ export default function ProfilePage() {
                   gap: "24px",
                 }}
               >
-                {/* Shop Name */}
+                {/* Shop Card (shop picture + shop name) */}
                 <div
                   style={{
                     background: "#fff",
                     borderRadius: 8,
                     boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                    padding: "24px 32px",
-                    fontSize: "2rem",
-                    fontWeight: 700,
-                    color: "#af7928",
-                    marginBottom: 0,
+                    padding: "5px 32px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "32px",
                   }}
                 >
-                  {shopName || "My Shop"}
+                  <img
+                    src={
+                      document
+                        .getElementById("sellerPhotoPreview")
+                        ?.getAttribute("src") || profilePicture || "/default-profile.jpg"
+                    }
+                    alt="Shop Image"
+                    style={{
+                      width: 65,
+                      height: 65,
+                      borderRadius: "12px",
+                      objectFit: "cover",
+                      background: "#faf8f5",
+                      marginRight: 24,
+                    }}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_PROFILE_PICTURE;
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: "25px",
+                      fontWeight: 700,
+                      color: "#af7928",
+                      letterSpacing: "1px",
+                    }}
+                  >
+                    {shopName || "My Shop"}
+                  </span>
                 </div>
 
                 {/* Order Status Card */}
@@ -2378,10 +2903,10 @@ export default function ProfilePage() {
                   </div>
                   <div style={{ display: "flex", gap: "32px" }}>
                     {[
-                      { label: "To Ship", value: 2, color: "#af7928" },
+                      { label: "To Ship", value: 0, color: "#af7928" },
                       { label: "Cancelled", value: 0, color: "#e74c3c" },
                       { label: "Return", value: 0, color: "#888" },
-                      { label: "Review", value: 1, color: "#45956a" },
+                      { label: "Review", value: 0, color: "#45956a" },
                     ].map((stat) => (
                       <div
                         key={stat.label}
@@ -2397,7 +2922,7 @@ export default function ProfilePage() {
                       >
                         <span
                           style={{
-                            fontSize: 32,
+                            fontSize: 20,
                             fontWeight: 700,
                             color: stat.color,
                             marginBottom: 4,
@@ -2407,7 +2932,7 @@ export default function ProfilePage() {
                         </span>
                         <span
                           style={{
-                            fontSize: 15,
+                            fontSize: 14,
                             color: "#2e3f36",
                             fontWeight: 500,
                           }}
@@ -2420,35 +2945,56 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Quick Links Card */}
-                <div>
-                  <div style={{ display: "flex", gap: "24px" }}>
+                <div
+                  style={{
+                    background: "#fff",
+                    borderRadius: 8,
+                    boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+                    padding: "24px 32px",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 18,
+                      color: "#2e3f36",
+                      marginBottom: 18,
+                    }}
+                  >
+                    Quick Links
+                  </div>
+                  <div style={{ display: "flex", gap: "32px" }}>
                     {/* My Products */}
                     <div
+                      className="quick-link-card"
                       style={{
                         flex: 1,
-                        background: "#fff",
+                        background: "#e74c3c",
                         borderRadius: 8,
-                        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         padding: "24px 0",
                         cursor: "pointer",
-                        transition: "box-shadow 0.2s",
+                        position: "relative",
                       }}
+                      onClick={() => (window.location.href = "/product")}
+                      tabIndex={0}
+                      role="button"
+                      aria-label="Go to My Products"
                     >
                       <FaBoxOpen
                         style={{
-                          fontSize: 36,
-                          color: "#af7928",
+                          fontSize: 30,
+                          color: "#fff",
                           marginBottom: 8,
                         }}
                       />
                       <span
                         style={{
                           fontWeight: 600,
-                          fontSize: 16,
-                          color: "#2e3f36",
+                          fontSize: 14,
+                          color: "#fff",
                         }}
                       >
                         My Products
@@ -2456,31 +3002,35 @@ export default function ProfilePage() {
                     </div>
                     {/* Shop Performance */}
                     <div
+                      className="quick-link-card"
                       style={{
                         flex: 1,
-                        background: "#fff",
+                        background: "#888",
                         borderRadius: 8,
-                        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
                         padding: "24px 0",
                         cursor: "pointer",
-                        transition: "box-shadow 0.2s",
+                        position: "relative",
                       }}
+                      onClick={() => (window.location.href = "/analytics")}
+                      tabIndex={0}
+                      role="button"
+                      aria-label="Go to Shop Performance"
                     >
                       <FaStore
                         style={{
-                          fontSize: 32,
-                          color: "#af7928",
+                          fontSize: 30,
+                          color: "#fff",
                           marginBottom: 8,
                         }}
                       />
                       <span
                         style={{
                           fontWeight: 600,
-                          fontSize: 16,
-                          color: "#2e3f36",
+                          fontSize: 14,
+                          color: "#fff",
                         }}
                       >
                         Shop Performance
@@ -2488,23 +3038,27 @@ export default function ProfilePage() {
                     </div>
                     {/* FAQ */}
                     <div
+                      className="quick-link-card"
                       style={{
                         flex: 1,
-                        background: "#fff",
+                        background: "#45956a",
                         borderRadius: 8,
-                        boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
                         display: "flex",
                         flexDirection: "column",
                         alignItems: "center",
-                        padding: "24px 0",
+                        padding: "10px 0",
                         cursor: "pointer",
-                        transition: "box-shadow 0.2s",
+                        position: "relative",
                       }}
+                      onClick={() => (window.location.href = "/faq")}
+                      tabIndex={0}
+                      role="button"
+                      aria-label="Go to FAQ"
                     >
                       <span
                         style={{
-                          fontSize: 32,
-                          color: "#af7928",
+                          fontSize: 30,
+                          color: "#fff",
                           marginBottom: 8,
                         }}
                       >
@@ -2513,8 +3067,8 @@ export default function ProfilePage() {
                       <span
                         style={{
                           fontWeight: 600,
-                          fontSize: 16,
-                          color: "#2e3f36",
+                          fontSize: 14,
+                          color: "#fff",
                         }}
                       >
                         FAQ
@@ -2523,54 +3077,124 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* Artist Story Card */}
                 <div
                   style={{
                     background: "#fff",
-                    borderRadius: 8,
-                    boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                    padding: "32px",
+                    borderRadius: 5,
+                    boxShadow: "0px 4px 20px rgba(0, 0, 0, 0.25)",
+                    padding: "0.5rem 2rem",
                     display: "flex",
                     alignItems: "center",
-                    gap: "32px",
+                    minHeight: 120,
+                    cursor: "pointer",
+                    transition: "box-shadow 0.3s ease",
+                    position: "relative",
+                  }}
+                  onClick={() =>
+                    (window.location.href = `/artiststory/${encodeURIComponent(
+                      fullName
+                    )}`)
+                  }
+                  tabIndex={0}
+                  role="button"
+                  aria-label="View Artist Story"
+                  onMouseEnter={(e) => {
+                    const arrow = e.currentTarget.querySelector(
+                      ".artist-arrow"
+                    ) as HTMLElement | null;
+                    if (arrow) arrow.style.opacity = "1";
+                  }}
+                  onMouseLeave={(e) => {
+                    const arrow = e.currentTarget.querySelector(
+                      ".artist-arrow"
+                    ) as HTMLElement | null;
+                    if (arrow) arrow.style.opacity = "0";
                   }}
                 >
                   <img
                     src={
                       document
                         .getElementById("sellerPhotoPreview")
-                        ?.getAttribute("src") || "/default-profile.jpg"
+                        ?.getAttribute("src") || profilePicture || "/default-profile.jpg"
                     }
                     alt="Artist"
                     style={{
-                      width: 120,
-                      height: 120,
-                      borderRadius: "50%",
+                      width: 90,
+                      height: 90,
+                      borderRadius: 5,
+                      border: "2px solid #af7928",
                       objectFit: "cover",
+                      marginRight: 24,
                       background: "#faf8f5",
                     }}
+                    loading="lazy"
+                    onError={(e) => {
+                      e.currentTarget.src = DEFAULT_PROFILE_PICTURE;
+                    }}
                   />
-                  <div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontWeight: 600,
-                        fontSize: 18,
-                        color: "#af7928",
-                        marginBottom: 8,
+                        fontSize: "18px",
+                        fontWeight: 700,
+                        color: "#2e3f36",
+                        marginBottom: 2,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
-                      Artist Story
+                      {sellerStoryTitle || "Artist Story"}
                     </div>
                     <div
                       style={{
-                        fontSize: 15,
-                        color: "#2e3f36",
-                        whiteSpace: "pre-line",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        color: "#af7928",
+                        marginBottom: 2,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
-                      {sellerStory || "No story provided yet."}
+                      {fullName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: "#222",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        maxWidth: 400,
+                      }}
+                      title={sellerStory}
+                    >
+                      {sellerStory.length > 80
+                        ? sellerStory.slice(0, 80) + "..."
+                        : sellerStory || "No story provided yet."}
                     </div>
                   </div>
+                  <span
+                    className="artist-arrow"
+                    style={{
+                      fontSize: "2rem",
+                      color: "#af7928",
+                      marginLeft: 24,
+                      flexShrink: 0,
+                      opacity: 0,
+                      transition: "opacity 0.2s",
+                      position: "absolute",
+                      right: 32,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                  >
+                    <i
+                      className="fa-solid fa-chevron-right"
+                      style={{ fontSize: "2rem", color: "#af7928" }}
+                    ></i>
+                  </span>
                 </div>
               </div>
             </div>
@@ -2579,6 +3203,202 @@ export default function ProfilePage() {
       </div>
       <Footer />
     </>
+  );
+}
+
+// Wishlist Content Component
+function WishlistContent() {
+  const [wishlistProducts, setWishlistProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadWishlist = async () => {
+      setLoading(true);
+      try {
+        // Get wishlist from localStorage
+        const savedWishlist = localStorage.getItem('wishlist');
+        const wishlistIds = savedWishlist ? JSON.parse(savedWishlist) : [];
+
+        if (wishlistIds.length === 0) {
+          setWishlistProducts([]);
+          setLoading(false);
+          return;
+        }
+
+        // Fetch product details for each wishlist item
+        const productPromises = wishlistIds.map((id: string) =>
+          fetch(`/api/products/${id}`).then(res => res.json())
+        );
+
+        const results = await Promise.all(productPromises);
+        const products = results
+          .filter(result => result.success)
+          .map(result => result.data);
+
+        setWishlistProducts(products);
+      } catch (error) {
+        console.error('Error loading wishlist:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadWishlist();
+  }, []);
+
+  const removeFromWishlist = (productId: string) => {
+    // Remove from localStorage
+    const savedWishlist = localStorage.getItem('wishlist');
+    const wishlistIds = savedWishlist ? JSON.parse(savedWishlist) : [];
+    const updated = wishlistIds.filter((id: string) => id !== productId);
+    localStorage.setItem('wishlist', JSON.stringify(updated));
+
+    // Update state
+    setWishlistProducts(prev => prev.filter(p => p._id !== productId));
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center' }}>
+        <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#AF7928' }}></i>
+        <p style={{ marginTop: '20px', color: '#666' }}>Loading your wishlist...</p>
+      </div>
+    );
+  }
+
+  if (wishlistProducts.length === 0) {
+    return (
+      <div style={{ padding: '60px 40px', textAlign: 'center' }}>
+        <FaHeart style={{ fontSize: '64px', color: '#d4a664', marginBottom: '20px' }} />
+        <h3 style={{ fontSize: '1.5rem', color: '#2E3F36', marginBottom: '12px' }}>
+          Your wishlist is empty
+        </h3>
+        <p style={{ color: '#666', fontSize: '1rem' }}>
+          Start adding products you love to your wishlist!
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ padding: '20px' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+        gap: '24px',
+      }}>
+        {wishlistProducts.map((product) => (
+          <div
+            key={product._id}
+            style={{
+              background: '#fff',
+              borderRadius: '12px',
+              overflow: 'hidden',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-4px)';
+              e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+            }}
+          >
+            <div style={{ position: 'relative' }}>
+              <img
+                src={product.images?.[0] || product.thumbnailUrl}
+                alt={product.name}
+                style={{
+                  width: '100%',
+                  height: '200px',
+                  objectFit: 'cover',
+                }}
+              />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeFromWishlist(product._id);
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'rgba(255, 255, 255, 0.95)',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = '#e74c3c';
+                  e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                <FaHeart style={{ color: '#e74c3c', fontSize: '18px' }} />
+              </button>
+            </div>
+            <div style={{ padding: '16px' }}>
+              <h4 style={{
+                fontSize: '1rem',
+                fontWeight: '600',
+                color: '#2E3F36',
+                marginBottom: '8px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {product.name}
+              </h4>
+              <p style={{
+                fontSize: '0.85rem',
+                color: '#666',
+                marginBottom: '12px',
+              }}>
+                {product.artistName}
+              </p>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}>
+                <span style={{
+                  fontSize: '1.2rem',
+                  fontWeight: '700',
+                  color: '#AF7928',
+                }}>
+                  ₱{product.price?.toFixed(2)}
+                </span>
+                {product.averageRating > 0 && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '0.85rem',
+                    color: '#FFC46B',
+                  }}>
+                    <i className="fas fa-star"></i>
+                    <span>{product.averageRating.toFixed(1)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

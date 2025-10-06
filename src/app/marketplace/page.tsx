@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FaShoppingCart, FaCheck, FaTimes, FaSpinner } from "react-icons/fa";
 import ImageCarousel from "@/components/ImageCarousel1";
 import Navbar from "@/components/Navbar";
@@ -43,6 +43,14 @@ export default function Marketplace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [suggestions, setSuggestions] = useState<Product[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLFormElement>(null);
+  
+  // Wishlist state
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set());
   
   // Product state by category
   const [handicrafts, setHandicrafts] = useState<Product[]>([]);
@@ -51,9 +59,104 @@ export default function Marketplace() {
   const [food, setFood] = useState<Product[]>([]);
   const [beauty, setBeauty] = useState<Product[]>([]);
 
+  // Load wishlist from localStorage on mount
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem('wishlist');
+    if (savedWishlist) {
+      setWishlist(new Set(JSON.parse(savedWishlist)));
+    }
+  }, []);
+
   // Fetch products on mount
   useEffect(() => {
     fetchAllProducts();
+  }, []);
+
+  // Fetch suggestions and auto-search with debouncing
+  useEffect(() => {
+    const fetchSuggestionsAndSearch = async () => {
+      const query = searchQuery.trim();
+      
+      // If empty, clear and reload all products
+      if (query.length === 0) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        if (searchActive) {
+          setSearchActive(false);
+          fetchAllProducts();
+        }
+        return;
+      }
+
+      // Show suggestions for short queries
+      if (query.length < 2) {
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      try {
+        // Fetch suggestions (first 5 for dropdown)
+        const suggestionsResponse = await fetch(`/api/products?search=${encodeURIComponent(query)}&limit=5`);
+        const suggestionsData = await suggestionsResponse.json();
+
+        if (suggestionsData.success && suggestionsData.data.length > 0) {
+          setSuggestions(suggestionsData.data);
+          setShowSuggestions(true);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
+        }
+
+        // Auto-search for all matching products
+        setIsSearching(true);
+        setSearchActive(true);
+        const searchResponse = await fetch(`/api/products?search=${encodeURIComponent(query)}&limit=50`);
+        const searchData = await searchResponse.json();
+
+        if (searchData.success) {
+          // Group results by category
+          const grouped = searchData.data.reduce((acc: any, product: Product) => {
+            if (!acc[product.category]) acc[product.category] = [];
+            acc[product.category].push(product);
+            return acc;
+          }, {});
+
+          setHandicrafts(grouped.handicrafts || []);
+          setFashion(grouped.fashion || []);
+          setHome(grouped.home || []);
+          setFood(grouped.food || []);
+          setBeauty(grouped.beauty || []);
+        } else {
+          // No results
+          setHandicrafts([]);
+          setFashion([]);
+          setHome([]);
+          setFood([]);
+          setBeauty([]);
+        }
+      } catch (err) {
+        console.error('Error fetching suggestions:', err);
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(fetchSuggestionsAndSearch, 500);
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchAllProducts = async () => {
@@ -92,35 +195,47 @@ export default function Marketplace() {
     }
   };
 
-  // Handle search
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
-
-    try {
-      setLoading(true);
-      const response = await fetch(`/api/products?search=${encodeURIComponent(searchQuery)}&limit=50`);
-      const data = await response.json();
-
-      if (data.success) {
-        // Group results by category
-        const grouped = data.data.reduce((acc: any, product: Product) => {
-          if (!acc[product.category]) acc[product.category] = [];
-          acc[product.category].push(product);
-          return acc;
-        }, {});
-
-        setHandicrafts(grouped.handicrafts || []);
-        setFashion(grouped.fashion || []);
-        setHome(grouped.home || []);
-        setFood(grouped.food || []);
-        setBeauty(grouped.beauty || []);
+  // Toggle wishlist
+  const toggleWishlist = (productId: string) => {
+    setWishlist(prev => {
+      const newWishlist = new Set(prev);
+      if (newWishlist.has(productId)) {
+        newWishlist.delete(productId);
+      } else {
+        newWishlist.add(productId);
       }
-    } catch (err) {
-      console.error('Search error:', err);
-    } finally {
-      setLoading(false);
-    }
+      // Save to localStorage
+      localStorage.setItem('wishlist', JSON.stringify(Array.from(newWishlist)));
+      return newWishlist;
+    });
+  };
+
+  // Handle search (now mainly for Enter key to close suggestions)
+  const handleSearch = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // Close suggestions when user presses Enter
+    setShowSuggestions(false);
+    
+    // The actual search is handled by the useEffect above
+    // This just provides immediate feedback for Enter key
+  };
+
+  // Clear search and reload all products
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSearchActive(false);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    fetchAllProducts();
+  };
+
+  // Handle suggestion click - Open product modal
+  const handleSuggestionClick = (product: Product) => {
+    setShowSuggestions(false);
+    setSuggestions([]);
+    // Open the product modal directly
+    handleProductClick(product);
   };
 
   // Convert API product to legacy format for ProductModal
@@ -201,22 +316,33 @@ export default function Marketplace() {
       <Navbar />
 
       <div className="search-bar-container">
-        <form onSubmit={handleSearch} className="search-bar">
-          <i className="fas fa-search search-icon"></i>
+        <form ref={searchRef} onSubmit={handleSearch} className="search-bar" style={{ position: 'relative' }}>
+          {isSearching ? (
+            <i className="fas fa-spinner fa-spin search-icon" style={{ color: '#AF7928' }}></i>
+          ) : (
+            <i className="fas fa-search search-icon"></i>
+          )}
           <input
             className="search-input"
             type="text"
             placeholder="Search for a product or artist"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter') {
+                setShowSuggestions(false);
+                handleSearch(e);
+              }
+            }}
+            onFocus={() => {
+              if (suggestions.length > 0) setShowSuggestions(true);
+            }}
+            disabled={isSearching}
           />
           {searchQuery && (
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery('');
-                fetchAllProducts();
-              }}
+              onClick={handleClearSearch}
               style={{
                 position: 'absolute',
                 right: '1rem',
@@ -224,11 +350,61 @@ export default function Marketplace() {
                 border: 'none',
                 cursor: 'pointer',
                 fontSize: '1.2rem',
-                color: '#999'
+                color: '#999',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.5rem',
+                transition: 'color 0.2s',
+                zIndex: 10
               }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#AF7928'}
+              onMouseLeave={(e) => e.currentTarget.style.color = '#999'}
             >
               <i className="fas fa-times"></i>
             </button>
+          )}
+
+          {/* Suggestions Dropdown */}
+          {showSuggestions && suggestions.length > 0 && (
+            <div className="search-suggestions">
+              {suggestions.map((product) => (
+                <div
+                  key={product._id}
+                  className="suggestion-item"
+                  onClick={() => handleSuggestionClick(product)}
+                >
+                  <img 
+                    src={product.images[0] || product.thumbnailUrl} 
+                    alt={product.name}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '4px',
+                      objectFit: 'cover',
+                      marginRight: '12px'
+                    }}
+                  />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      fontWeight: 500, 
+                      color: '#2E3F36',
+                      fontSize: '0.9rem',
+                      marginBottom: '2px'
+                    }}>
+                      {product.name}
+                    </div>
+                    <div style={{ 
+                      fontSize: '0.8rem', 
+                      color: '#999' 
+                    }}>
+                      {product.artistName} • ₱{product.price.toFixed(2)}
+                    </div>
+                  </div>
+                  <i className="fas fa-arrow-right" style={{ color: '#AF7928', fontSize: '0.9rem' }}></i>
+                </div>
+              ))}
+            </div>
           )}
         </form>
       </div>
@@ -239,72 +415,106 @@ export default function Marketplace() {
       </div>
 
       {handicrafts.length > 0 && (
-        <Section
-          title="HANDICRAFTS"
-          products={handicrafts}
-          onProductClick={handleProductClick}
-        />
+        <div className="category-section">
+          <Section
+            title="HANDICRAFTS"
+            products={handicrafts}
+            onProductClick={handleProductClick}
+          />
+        </div>
       )}
       
       {fashion.length > 0 && (
-        <Section
-          title="FASHION"
-          products={fashion}
-          onProductClick={handleProductClick}
-        />
+        <div className="category-section">
+          <Section
+            title="FASHION"
+            products={fashion}
+            onProductClick={handleProductClick}
+          />
+        </div>
       )}
       
       {home.length > 0 && (
-        <Section
-          title="HOME"
-          products={home}
-          onProductClick={handleProductClick}
-        />
+        <div className="category-section">
+          <Section
+            title="HOME"
+            products={home}
+            onProductClick={handleProductClick}
+          />
+        </div>
       )}
       
       {food.length > 0 && (
-        <Section
-          title="FOOD"
-          products={food}
-          onProductClick={handleProductClick}
-        />
+        <div className="category-section">
+          <Section
+            title="FOOD"
+            products={food}
+            onProductClick={handleProductClick}
+          />
+        </div>
       )}
       
       {beauty.length > 0 && (
-        <Section
-          title="BEAUTY & WELLNESS"
-          products={beauty}
-          onProductClick={handleProductClick}
-        />
+        <div className="category-section">
+          <Section
+            title="BEAUTY & WELLNESS"
+            products={beauty}
+            onProductClick={handleProductClick}
+          />
+        </div>
+      )}
+
+      {/* Search results indicator */}
+      {searchActive && !isSearching && (
+        <div style={{ 
+          textAlign: 'center', 
+          padding: '1rem 0', 
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px',
+          margin: '0 2rem 1rem'
+        }}>
+          <p style={{ color: '#666', fontSize: '0.95rem', margin: 0 }}>
+            {handicrafts.length + fashion.length + home.length + food.length + beauty.length > 0 ? (
+              <>
+                Showing {handicrafts.length + fashion.length + home.length + food.length + beauty.length} result(s) for "<b>{searchQuery}</b>"
+              </>
+            ) : null}
+          </p>
+        </div>
       )}
 
       {/* No results message */}
-      {!loading && handicrafts.length === 0 && fashion.length === 0 && 
+      {!loading && !isSearching && handicrafts.length === 0 && fashion.length === 0 && 
        home.length === 0 && food.length === 0 && beauty.length === 0 && (
         <div style={{ textAlign: 'center', padding: '4rem 0' }}>
-          <i className="fas fa-search" style={{ fontSize: '3rem', color: '#999', marginBottom: '1rem' }}></i>
-          <p style={{ fontSize: '1.2rem', color: '#666' }}>
-            {searchQuery ? `No products found for "${searchQuery}"` : 'No products available'}
+          <i className="fas fa-search" style={{ fontSize: '3rem', color: '#999', marginBottom: '1rem', display: 'block' }}></i>
+          <p style={{ fontSize: '1.2rem', color: '#666', marginBottom: '0.5rem' }}>
+            {searchActive ? `No products found for "${searchQuery}"` : 'No products available'}
           </p>
-          {searchQuery && (
-            <button 
-              onClick={() => {
-                setSearchQuery('');
-                fetchAllProducts();
-              }}
-              style={{
-                marginTop: '1rem',
-                padding: '0.75rem 2rem',
-                backgroundColor: '#AF7928',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '1rem'
-              }}
-            >
-              Clear Search
-            </button>
+          {searchActive && (
+            <>
+              <p style={{ fontSize: '0.95rem', color: '#999', marginBottom: '1.5rem' }}>
+                Try searching with different keywords or browse all products
+              </p>
+              <button 
+                onClick={handleClearSearch}
+                style={{
+                  padding: '0.75rem 2rem',
+                  backgroundColor: '#AF7928',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '1rem',
+                  transition: 'background-color 0.3s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#8D6020'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#AF7928'}
+              >
+                <i className="fas fa-redo" style={{ marginRight: '0.5rem' }}></i>
+                Clear Search & Browse All
+              </button>
+            </>
           )}
         </div>
       )}
@@ -315,6 +525,12 @@ export default function Marketplace() {
         <ProductModal
           product={selectedProduct}
           onClose={() => setSelectedProduct(null)}
+          isInWishlist={selectedProduct.productId ? wishlist.has(selectedProduct.productId) : false}
+          onToggleWishlist={
+            selectedProduct.productId
+              ? () => toggleWishlist(selectedProduct.productId!)
+              : undefined
+          }
         />
       )}
     </div>
@@ -365,7 +581,10 @@ function Section({
 
   return (
     <>
-      <div className="section-title">{title}</div>
+      <div className="section-header">
+        <div className="section-title">{title}</div>
+        <div className="section-subtitle">Discover unique {title.toLowerCase()} from local artisans</div>
+      </div>
       <div className="product-grid">
         {products.map((product) => (
             <div className="product-card" key={product._id}>
@@ -448,14 +667,18 @@ function Section({
               )}
             </div>
             <div className="product-info">
-              <h3 className="product-name">{product.name}</h3>
-              <p className="product-artist">{product.artistName}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="product-price">₱{product.price.toFixed(2)}</span>
+              <div className="product-info-top">
+                <h3 className="product-name">{product.name}</h3>
+                <p className="product-artist">{product.artistName}</p>
+              </div>
+              <div className="product-info-bottom">
+                <div className="product-price-wrapper">
+                  <span className="product-price">₱{product.price.toFixed(2)}</span>
+                </div>
                 {product.averageRating > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: '#f39c12' }}>
+                  <div className="product-rating">
                     <i className="fas fa-star"></i>
-                    <span style={{ marginLeft: '4px' }}>
+                    <span className="rating-text">
                       {product.averageRating.toFixed(1)} ({product.totalReviews})
                     </span>
                   </div>

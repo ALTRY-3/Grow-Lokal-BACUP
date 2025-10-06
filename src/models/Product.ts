@@ -115,7 +115,6 @@ const ProductSchema = new Schema<IProduct>(
     sku: {
       type: String,
       required: [true, 'SKU is required'],
-      unique: true,
       trim: true,
       uppercase: true,
     },

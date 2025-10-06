@@ -32,6 +32,34 @@ export interface IUser extends mongoose.Document {
   profilePicture?: string;
   isSeller: boolean;
   shopId?: mongoose.Types.ObjectId;
+  sellerProfile?: {
+    shopName?: string;
+    businessType?: string;
+    shopDescription?: string;
+    pickupAddress?: {
+      barangay?: string;
+      otherDetails?: string;
+    };
+    shopEmail?: string;
+    shopPhone?: string;
+    socialMediaLinks?: {
+      facebook?: string;
+      instagram?: string;
+      tiktok?: string;
+    };
+    sellerStoryTitle?: string;
+    sellerStory?: string;
+    sellerPhoto?: string;
+    validIdUrl?: string;
+    agreedToTerms?: boolean;
+    agreedToCommission?: boolean;
+    agreedToShipping?: boolean;
+    applicationStatus?: 'pending' | 'approved' | 'rejected';
+    applicationSubmittedAt?: Date;
+    approvedAt?: Date;
+    rejectedAt?: Date;
+    rejectionReason?: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -147,6 +175,38 @@ const UserSchema = new mongoose.Schema<IUser>(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Shop',
       default: null,
+    },
+    sellerProfile: {
+      shopName: { type: String, trim: true },
+      businessType: { type: String, trim: true },
+      shopDescription: { type: String, trim: true },
+      pickupAddress: {
+        barangay: { type: String, trim: true },
+        otherDetails: { type: String, trim: true },
+      },
+      shopEmail: { type: String, trim: true },
+      shopPhone: { type: String, trim: true },
+      socialMediaLinks: {
+        facebook: { type: String, trim: true },
+        instagram: { type: String, trim: true },
+        tiktok: { type: String, trim: true },
+      },
+      sellerStoryTitle: { type: String, trim: true },
+      sellerStory: { type: String, trim: true },
+      sellerPhoto: { type: String, trim: true },
+      validIdUrl: { type: String, trim: true },
+      agreedToTerms: { type: Boolean, default: false },
+      agreedToCommission: { type: Boolean, default: false },
+      agreedToShipping: { type: Boolean, default: false },
+      applicationStatus: {
+        type: String,
+        enum: ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
+      applicationSubmittedAt: { type: Date },
+      approvedAt: { type: Date },
+      rejectedAt: { type: Date },
+      rejectionReason: { type: String, trim: true },
     },
   },
   {

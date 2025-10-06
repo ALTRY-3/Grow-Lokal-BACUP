@@ -115,12 +115,23 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
+    // Check if user is an approved seller
+    const User = require('@/models/User').default;
+    const user = await User.findOne({ email: session.user.email });
+    
+    if (!user || !user.isSeller || user.sellerProfile?.applicationStatus !== 'approved') {
+      return NextResponse.json(
+        { success: false, message: 'You must be an approved seller to create products' },
+        { status: 403 }
+      );
+    }
+
     const body = await request.json();
 
     // Validate required fields
     const requiredFields = ['name', 'description', 'price', 'category', 'images', 'stock'];
     for (const field of requiredFields) {
-      if (!body[field]) {
+      if (body[field] === undefined || body[field] === null || body[field] === '') {
         return NextResponse.json(
           { success: false, message: `${field} is required` },
           { status: 400 }
@@ -128,12 +139,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Additional validation
+    if (body.images.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'At least one image is required' },
+        { status: 400 }
+      );
+    }
+
+    if (body.price <= 0) {
+      return NextResponse.json(
+        { success: false, message: 'Price must be greater than 0' },
+        { status: 400 }
+      );
+    }
+
+    if (body.stock < 0) {
+      return NextResponse.json(
+        { success: false, message: 'Stock cannot be negative' },
+        { status: 400 }
+      );
+    }
+
     // Create product
     const product = await Product.create({
       ...body,
-      artistId: session.user.id || session.user.email, // Use user ID from session
-      artistName: body.artistName || session.user.name || 'Unknown Artist',
+      artistId: user._id, // Use the actual user ObjectId
+      artistName: user.sellerProfile?.shopName || user.name || 'Unknown Artist',
       thumbnailUrl: body.thumbnailUrl || body.images[0],
+      isAvailable: body.isActive !== false, // Set availability based on active status
     });
 
     return NextResponse.json(
