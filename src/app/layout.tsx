@@ -15,7 +15,8 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "GrowLokal",
-  description: "A community marketplace for Olongapo’s artisans and entrepreneurs",
+  description:
+    "A community marketplace for Olongapo’s artisans and entrepreneurs",
 };
 
 export default function RootLayout({

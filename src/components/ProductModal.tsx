@@ -1,6 +1,13 @@
 "use client";
-import React, { useState } from "react";
-import { FaTimes, FaStar, FaHeart, FaRegHeart } from "react-icons/fa";
+import React, { useEffect, useState } from "react";
+// Update the imports at the top
+import {
+  FaTimes,
+  FaStar,
+  FaHeart,
+  FaRegHeart,
+  FaChevronDown,
+} from "react-icons/fa";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 
@@ -10,20 +17,75 @@ interface Product {
   name: string;
   artist: string;
   price: string;
-  productId?: string; // Optional: for add to cart functionality
-  maxStock?: number; // Optional: for stock limit
+  productId?: string;
+  maxStock?: number;
+  craftType?: string;
+  category?: string;
+  soldCount?: number;
 }
+
+// Add new interface for recommended products
+interface RecommendedProduct {
+  _id: string;
+  name: string;
+  price: number;
+  images: string[];
+  thumbnailUrl: string;
+  category: string;
+  craftType: string;
+}
+
+const dummyRecommendations = [
+  {
+    _id: "1",
+    name: "Handwoven Buri Bag",
+    price: 799,
+    images: ["/box7.png"],
+    thumbnailUrl: "/box7.png",
+    category: "Handicrafts",
+    craftType: "Weaving",
+  },
+  {
+    _id: "2",
+    name: "Embroidered Shawl",
+    price: 699,
+    images: ["/fashion5.png"],
+    thumbnailUrl: "/fashion5.png",
+    category: "Fashion",
+    craftType: "Embroidery",
+  },
+  {
+    _id: "3",
+    name: "Wooden Kuksa Mug",
+    price: 449,
+    images: ["/home6.png"],
+    thumbnailUrl: "/home6.png",
+    category: "Home",
+    craftType: "Woodwork",
+  },
+  {
+    _id: "4",
+    name: "Pure Honey",
+    price: 369,
+    images: ["/food6.png"],
+    thumbnailUrl: "/food6.png",
+    category: "Food",
+    craftType: "Cooking",
+  },
+];
 
 export default function ProductModal({
   product,
   onClose,
   isInWishlist = false,
   onToggleWishlist,
+  onProductChange, // Add this prop
 }: {
   product: Product;
   onClose: () => void;
   isInWishlist?: boolean;
   onToggleWishlist?: () => void;
+  onProductChange: (product: Product) => void; // Add this type
 }) {
   const [mainImage, setMainImage] = useState(product.img);
   const [quantity, setQuantity] = useState(1);
@@ -34,7 +96,15 @@ export default function ProductModal({
   const [hover, setHover] = useState(0);
   const [reviews, setReviews] = useState(0);
 
+  const [reviewText, setReviewText] = useState("");
+
+  const [isDescriptionOpen, setIsDescriptionOpen] = useState(true);
+
   const { addItem } = useCartStore();
+
+  const [recommendations, setRecommendations] = useState<RecommendedProduct[]>(
+    []
+  );
 
   const handleRating = (rate: number) => {
     setRating(rate);
@@ -43,7 +113,7 @@ export default function ProductModal({
 
   const handleAddToCart = async () => {
     if (!product.productId) {
-      alert('Cannot add this product to cart');
+      alert("Cannot add this product to cart");
       return;
     }
 
@@ -51,20 +121,77 @@ export default function ProductModal({
     try {
       await addItem(product.productId, quantity);
       setAddSuccess(true);
-      
-      // Show success for 2 seconds
+
+      // Show success for 2 seconds then reset
       setTimeout(() => {
         setAddSuccess(false);
-        onClose(); // Close modal after adding
+        setQuantity(1); // Reset quantity after success
       }, 1500);
     } catch (error: any) {
-      alert(error.message || 'Failed to add to cart');
+      alert(error.message || "Failed to add to cart");
     } finally {
       setAdding(false);
     }
   };
 
+  const handleSubmitReview = () => {
+    if (rating === 0) {
+      alert("Please select a rating");
+      return;
+    }
+
+    if (!reviewText.trim()) {
+      alert("Please write a review");
+      return;
+    }
+
+    // TODO: Submit review to backend
+    console.log("Submitting review:", { rating, reviewText });
+
+    // Reset form
+    setRating(0);
+    setReviewText("");
+    alert("Review submitted successfully!");
+  };
+
   const maxStock = product.maxStock || 99;
+
+  // Add effect to fetch recommendations
+  useEffect(() => {
+    // Using dummy data instead of API call
+    setRecommendations(dummyRecommendations);
+  }, []);
+
+  // Add this helper function inside ProductModal component, before the return statement
+  const convertToLegacyProduct = (apiProduct: {
+    _id: string;
+    name: string;
+    price: number;
+    images: string[];
+    thumbnailUrl: string;
+    category: string;
+    craftType: string;
+    description: string;
+    stock: number;
+    artistName: string;
+    artistId: string;
+    averageRating: number;
+    totalReviews: number;
+    isAvailable: boolean;
+    isFeatured: boolean;
+  }): Product => ({
+    img: apiProduct.images[0] || apiProduct.thumbnailUrl,
+    hoverImg:
+      apiProduct.images[1] || apiProduct.images[0] || apiProduct.thumbnailUrl,
+    name: apiProduct.name,
+    artist: apiProduct.artistName || "Unknown Artist",
+    price: `₱${apiProduct.price.toFixed(2)}`,
+    productId: apiProduct._id,
+    maxStock: apiProduct.stock,
+    craftType: apiProduct.craftType,
+    category: apiProduct.category,
+    soldCount: 0,
+  });
 
   return (
     <div className="modal-overlay">
@@ -95,110 +222,292 @@ export default function ProductModal({
           </div>
 
           <div className="modal-right">
-            <h2 className="modal-artist">{product.artist}</h2>
-            <Link href="/stories" className="artist-story-btn">
-              <i>Artist Story Available</i>
-            </Link>
             <h3 className="modal-product-name">{product.name}</h3>
-            <p className="modal-price">{product.price}</p>
+
+            <div className="modal-tags">
+              {product.craftType && (
+                <span className="modal-tag craft-type">
+                  {product.craftType}
+                </span>
+              )}
+              {product.category && (
+                <span className="modal-tag category">{product.category}</span>
+              )}
+            </div>
+
+            <div className="modal-price-row">
+              <span className="modal-price">{product.price}</span>
+              <div className="modal-meta">
+                {product.soldCount !== undefined && (
+                  <span className="sold-count">{product.soldCount} sold</span>
+                )}
+                {onToggleWishlist && (
+                  <button
+                    className="modal-wishlist-btn"
+                    onClick={onToggleWishlist}
+                    aria-label={
+                      isInWishlist ? "Remove from wishlist" : "Add to wishlist"
+                    }
+                  >
+                    {isInWishlist ? (
+                      <FaHeart className="heart-icon active" />
+                    ) : (
+                      <FaRegHeart className="heart-icon" />
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="modal-divider"></div>
 
-            <p className="modal-quantity-label">QUANTITY</p>
-            <div className="modal-quantity">
-              <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>
-                -
-              </button>
-              <span>{quantity}</span>
-              <button 
-                onClick={() => setQuantity(Math.min(maxStock, quantity + 1))}
-                disabled={quantity >= maxStock}
-              >
-                +
-              </button>
-            </div>
-
-            <p className="modal-review-title">CUSTOMER REVIEWS</p>
-            <div className="reviews-section">
-              <div className="stars">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <FaStar
-                    key={star}
-                    size={24}
-                    style={{ cursor: "pointer" }}
-                    color={star <= (hover || rating) ? "#FFD700" : "#e4e5e9"}
-                    onClick={() => handleRating(star)}
-                    onMouseEnter={() => setHover(star)}
-                    onMouseLeave={() => setHover(rating)}
-                  />
-                ))}
-              </div>
-              <p>{reviews > 0 ? `${reviews} review(s)` : "No reviews yet"}</p>
-            </div>
-
-            {/* Action buttons container */}
-            <div className="modal-action-buttons">
-              {/* Wishlist button */}
-              {onToggleWishlist && (
-                <button 
-                  className="modal-wishlist-btn-inline"
-                  onClick={onToggleWishlist}
-                  aria-label={isInWishlist ? "Remove from wishlist" : "Add to wishlist"}
-                >
-                  {isInWishlist ? (
-                    <FaHeart style={{ color: '#e74c3c' }} />
-                  ) : (
-                    <FaRegHeart />
-                  )}
+            <div className="modal-quantity-container">
+              <p className="modal-quantity-label">Quantity:</p>
+              <div className="modal-quantity">
+                <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                  -
                 </button>
-              )}
+                <span>{quantity}</span>
+                <button
+                  onClick={() => setQuantity(Math.min(maxStock, quantity + 1))}
+                  disabled={quantity >= maxStock}
+                >
+                  +
+                </button>
+              </div>
+            </div>
 
-              <button 
+            <div className="modal-action-buttons">
+              <button
                 className="add-to-cart-btn"
                 onClick={handleAddToCart}
                 disabled={adding || !product.productId || addSuccess}
                 style={{
-                  backgroundColor: addSuccess ? '#10b981' : undefined,
-                  cursor: (adding || !product.productId) ? 'not-allowed' : 'pointer',
-                  opacity: (adding || !product.productId) ? 0.6 : 1
+                  backgroundColor: addSuccess ? "#10b981" : undefined,
+                  cursor:
+                    adding || !product.productId ? "not-allowed" : "pointer",
+                  opacity: adding || !product.productId ? 0.6 : 1,
                 }}
               >
-                {adding ? 'Adding...' : addSuccess ? '✓ Added!' : 'Add to Cart'}
+                {adding ? "Adding..." : addSuccess ? "✓ Added!" : "Add to Cart"}
               </button>
+            </div>
+
+            <div className="modal-review-section">
+              <h3 className="modal-review-title">REVIEW THIS PRODUCT:</h3>
+              <div className="reviews-section">
+                <div className="stars">
+                  {[...Array(5)].map((_, index) => {
+                    const ratingValue = index + 1;
+                    return (
+                      <FaStar
+                        key={index}
+                        size={20}
+                        color={
+                          ratingValue <= (hover || rating)
+                            ? "#ffc107"
+                            : "#e4e5e9"
+                        }
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handleRating(ratingValue)}
+                        onMouseEnter={() => setHover(ratingValue)}
+                        onMouseLeave={() => setHover(rating)}
+                      />
+                    );
+                  })}
+                </div>
+                <textarea
+                  className="review-text-input"
+                  placeholder="Write your review here..."
+                  value={reviewText}
+                  onChange={(e) => setReviewText(e.target.value)}
+                  rows={3}
+                />
+                <div className="reviews-footer">
+                  <p className="reviews-count">
+                    {reviews === 0
+                      ? "Be the first to review this product"
+                      : `${reviews} ${reviews === 1 ? "review" : "reviews"}`}
+                  </p>
+                  <button
+                    className="submit-review-btn"
+                    onClick={handleSubmitReview}
+                    disabled={rating === 0 || !reviewText.trim()}
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* BOTTOM: ABOUT SECTION */}
-        <div className="modal-about">
-          <h3 className="about-title">About the Product</h3>
-          <div className="modal-divider-about"></div>
+        <div className="modal-bottom-section">
+          <div className="modal-section-gap"></div>
 
-          <div className="about-box">
-            <p>
-              Numbered from the edition of 295, with the accompanying
-              certificate of authenticity, on Hahnemühle 350gsm Museum Etching
-              wove paper, with full margins, sheet 700 x 560mm (27 1/2 x 22in)
-              (unframed).
-              <br />
-              Images are not representative of the actual work or condition; for
-              full information on the condition of this work, request a
-              condition report by emailing <b>specialist@artsy.net</b>.
-            </p>
+          {/* BOTTOM: PRODUCT DESCRIPTION */}
+          <div className="modal-about">
+            <div className="product-description-section">
+              <div
+                className="description-header"
+                onClick={() => setIsDescriptionOpen(!isDescriptionOpen)}
+              >
+                <h3 className="description-title">Product Description</h3>
+                <span
+                  className={`arrow-icon ${isDescriptionOpen ? "open" : ""}`}
+                >
+                  <FaChevronDown />
+                </span>
+              </div>
+              {isDescriptionOpen && (
+                <div className="description-content">
+                  <div className="description-item">
+                    <span className="label">Category:</span>
+                    <span className="value">{product.category}</span>
+                  </div>
+                  <div className="description-item">
+                    <span className="label">Craft Type:</span>
+                    <span className="value">{product.craftType}</span>
+                  </div>
+                  <div className="description-item">
+                    <span className="label">Made In Barangay:</span>
+                    <span className="value">Barangay Name</span>
+                  </div>
+                  <br />
+                  <div className="description-text">
+                    <p>Product description goes here...</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="about-box">
-            <p>
-              <b>Materials:</b> Hahnemühle 350gsm Museum Etching paper
-            </p>
-            <p>
-              <b>Size:</b> 27 3/5 × 22 in | 70 × 56 cm
-            </p>
-            <p>
-              <b>Medium:</b> Digital pigment print in colours
-            </p>
-            <p>
-              <b>Type:</b> Print
-            </p>
+          <div className="modal-section-gap"></div>
+
+          {/* Product Ratings Section */}
+          <div className="ratings-section">
+            <div className="ratings-header">
+              <div className="ratings-title">
+                <span className="ratings-count">0</span>
+                <FaStar className="rating-star" />
+                <span className="ratings-label">Product Ratings</span>
+              </div>
+              <button className="view-all-btn">
+                View all
+                <i className="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div className="modal-divider-ratings"></div>
+
+            <div className="ratings-list">
+              {/* Example review cards */}
+              <div className="review-card">
+                <div className="reviewer-info">
+                  <img
+                    src="https://api.dicebear.com/7.x/avataaars/svg?seed=John"
+                    alt="User Avatar"
+                    className="reviewer-avatar"
+                  />
+                  <div className="reviewer-details">
+                    <h4 className="reviewer-name">John Doe</h4>
+                    <div className="review-rating">
+                      {[...Array(5)].map((_, index) => (
+                        <FaStar
+                          key={index}
+                          className={index < 4 ? "star-filled" : "star-empty"}
+                        />
+                      ))}
+                    </div>
+                    <p className="review-text">
+                      Great product! The quality is excellent and the
+                      craftsmanship is outstanding. Would definitely recommend
+                      to others.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add more review cards as needed */}
+            </div>
+          </div>
+
+          <div className="modal-section-gap"></div>
+
+          {/* Seller/Artist Section */}
+          <div className="seller-section">
+            <div className="seller-info">
+              <div className="seller-main">
+                <img
+                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${product.artist}`}
+                  alt="Seller Avatar"
+                  className="seller-avatar"
+                />
+                <div className="seller-details">
+                  <h4 className="shop-name">{product.artist}'s Shop</h4>
+                  <div className="shop-location">
+                    <i className="fa-solid fa-location-dot"></i>
+                    <span>Barangay Name</span>
+                  </div>
+                </div>
+                <button className="visit-shop-btn">
+                  <i className="fa-solid fa-shop"></i>
+                  Visit
+                </button>
+              </div>
+              <div className="seller-stats">
+                <div className="stat-item">
+                  <span className="stat-value">4.8</span>
+                  <span className="stat-label">Rating</span>
+                </div>
+                <div className="stat-divider"></div>
+                <div className="stat-item">
+                  <span className="stat-value">42</span>
+                  <span className="stat-label">Products</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="modal-section-gap"></div>
+
+          {/* You May Also Like Section */}
+          <div className="recommendations-section">
+            <h3 className="recommendations-title">You May Also Like</h3>
+            <div className="recommendations-grid">
+              {dummyRecommendations.map((rec) => (
+                <div
+                  key={rec._id}
+                  className="recommendation-card"
+                  onClick={() => {
+                    const legacyProduct = {
+                      img: rec.images[0],
+                      hoverImg: rec.images[0],
+                      name: rec.name,
+                      artist: "Local Artisan",
+                      price: `₱${rec.price.toFixed(2)}`,
+                      productId: rec._id,
+                      maxStock: 10,
+                      craftType: rec.craftType,
+                      category: rec.category,
+                      soldCount: 0,
+                    };
+                    setMainImage(legacyProduct.img);
+                    onProductChange(legacyProduct);
+                  }}
+                >
+                  <div className="recommendation-image">
+                    <img src={rec.images[0]} alt={rec.name} />
+                  </div>
+                  <div className="recommendation-info">
+                    <h4>{rec.name}</h4>
+                    <span className="recommendation-price">
+                      ₱{rec.price.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>

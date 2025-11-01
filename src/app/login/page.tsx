@@ -32,17 +32,19 @@ export default function LoginPage() {
   }, [status, router]);
 
   useEffect(() => {
-    const reset = searchParams?.get('reset');
-    const verified = searchParams?.get('verified');
-    const urlError = searchParams?.get('error');
-    
-    if (reset === 'true') {
-      setSuccessMessage('Password reset successful! You can now log in with your new password.');
+    const reset = searchParams?.get("reset");
+    const verified = searchParams?.get("verified");
+    const urlError = searchParams?.get("error");
+
+    if (reset === "true") {
+      setSuccessMessage(
+        "Password reset successful! You can now log in with your new password."
+      );
       // Clear the message after 5 seconds
-      setTimeout(() => setSuccessMessage(''), 5000);
-    } else if (verified === 'true') {
-      setSuccessMessage('Email verified successfully! You can now log in.');
-      setTimeout(() => setSuccessMessage(''), 5000);
+      setTimeout(() => setSuccessMessage(""), 5000);
+    } else if (verified === "true") {
+      setSuccessMessage("Email verified successfully! You can now log in.");
+      setTimeout(() => setSuccessMessage(""), 5000);
     } else if (urlError) {
       // Handle NextAuth errors from URL parameters
       setError(getFriendlyErrorMessage(urlError));
@@ -52,10 +54,20 @@ export default function LoginPage() {
   // Show loading state while checking authentication
   if (status === "loading") {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#4CAF50' }}></i>
-          <p style={{ marginTop: '20px' }}>Loading...</p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <i
+            className="fas fa-spinner fa-spin"
+            style={{ fontSize: "48px", color: "#4CAF50" }}
+          ></i>
+          <p style={{ marginTop: "20px" }}>Loading...</p>
         </div>
       </div>
     );
@@ -82,7 +94,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = await signIn('credentials', {
+      const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
         rememberMe: rememberMe,
@@ -93,14 +105,14 @@ export default function LoginPage() {
         // Use friendly error messages
         const friendlyError = getFriendlyErrorMessage(result.error);
         setError(friendlyError);
-        
+
         // Show resend verification if it's a verification error
         if (isVerificationError(result.error)) {
           setShowResendVerification(true);
         }
       } else if (result?.ok) {
-        // Redirect to marketplace on success
-        window.location.href = '/marketplace';
+        // Redirect to home on success
+        window.location.href = "/home";
       }
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error?.message || error));
@@ -109,22 +121,22 @@ export default function LoginPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+  const handleSocialLogin = async (provider: "google" | "facebook") => {
     if (socialLoading || isLoading) return; // Prevent double submit
-    
+
     setSocialLoading(provider);
     setError(""); // Clear previous errors
     try {
-      const result = await signIn(provider, { 
-        callbackUrl: '/marketplace',
-        redirect: false 
+      const result = await signIn(provider, {
+        callbackUrl: "/home",
+        redirect: false,
       });
-      
+
       if (result?.error) {
         setError(getFriendlyErrorMessage(result.error));
         setSocialLoading(null);
       } else if (result?.ok) {
-        window.location.href = '/marketplace';
+        window.location.href = "/home";
       }
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error?.message || error));
@@ -194,20 +206,23 @@ export default function LoginPage() {
                 {successMessage}
               </div>
             )}
-            
+
             {error && (
               <div className="error-message">
                 <i className="fas fa-exclamation-triangle"></i>
                 {error}
                 {showResendVerification && formData.email && (
-                  <div style={{ marginTop: '10px' }}>
+                  <div style={{ marginTop: "10px" }}>
                     <ResendVerification
                       email={formData.email}
                       onSuccess={(message, devLink) => {
                         setSuccessMessage(message);
                         setShowResendVerification(false);
                         if (devLink) {
-                          console.log('Development verification link:', devLink);
+                          console.log(
+                            "Development verification link:",
+                            devLink
+                          );
                         }
                       }}
                       onError={(err) => setError(err)}
@@ -264,7 +279,11 @@ export default function LoginPage() {
               </Link>
             </div>
 
-            <button type="submit" className="login-button" disabled={isLoading || socialLoading !== null}>
+            <button
+              type="submit"
+              className="login-button"
+              disabled={isLoading || socialLoading !== null}
+            >
               {isLoading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
@@ -281,14 +300,20 @@ export default function LoginPage() {
           </div>
 
           <div className="social-login">
-            <button 
+            <button
               className="social-button facebook"
-              onClick={() => handleSocialLogin('facebook')}
+              onClick={() => handleSocialLogin("facebook")}
               type="button"
               disabled={isLoading || socialLoading !== null}
-              style={{ opacity: socialLoading === 'facebook' || (socialLoading && socialLoading !== 'facebook') ? 0.6 : 1 }}
+              style={{
+                opacity:
+                  socialLoading === "facebook" ||
+                  (socialLoading && socialLoading !== "facebook")
+                    ? 0.6
+                    : 1,
+              }}
             >
-              {socialLoading === 'facebook' ? (
+              {socialLoading === "facebook" ? (
                 <i className="fas fa-spinner fa-spin"></i>
               ) : (
                 <Image
@@ -300,14 +325,20 @@ export default function LoginPage() {
                 />
               )}
             </button>
-            <button 
+            <button
               className="social-button google"
-              onClick={() => handleSocialLogin('google')}
+              onClick={() => handleSocialLogin("google")}
               type="button"
               disabled={isLoading || socialLoading !== null}
-              style={{ opacity: socialLoading === 'google' || (socialLoading && socialLoading !== 'google') ? 0.6 : 1 }}
+              style={{
+                opacity:
+                  socialLoading === "google" ||
+                  (socialLoading && socialLoading !== "google")
+                    ? 0.6
+                    : 1,
+              }}
             >
-              {socialLoading === 'google' ? (
+              {socialLoading === "google" ? (
                 <i className="fas fa-spinner fa-spin"></i>
               ) : (
                 <Image

@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { MdNotifications, MdNotificationsActive } from "react-icons/md";
 import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import { FaSearch } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "./events.css";
 
 export default function EventsPage() {
@@ -16,8 +18,10 @@ export default function EventsPage() {
   const [suggestions, setSuggestions] = useState<typeof events>([]);
   const [calendarReminder, setCalendarReminder] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
 
   const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const featuredRef = useRef<HTMLDivElement>(null);
 
   const events = [
     {
@@ -28,6 +32,7 @@ export default function EventsPage() {
       location: "SM City Olongapo",
       details:
         "A four-day artisan fair held at SM City Olongapo, featuring a diverse range of Filipino crafts and handmade products from local artisans.",
+      type: "Fair",
     },
     {
       date: "2026-02-17",
@@ -37,6 +42,7 @@ export default function EventsPage() {
       location: "SM City Olongapo Central",
       details:
         "An art exhibit held at SM City Olongapo Central, showcasing traditional and contemporary artworks by artists from Olongapo, Zambales, and Bataan.",
+      type: "Festival",
     },
     {
       date: "2025-10-25",
@@ -46,6 +52,7 @@ export default function EventsPage() {
       location: "Ayala Malls Harbor Point",
       details:
         "A two-day art market at Ayala Malls Harbor Point, offering handmade crafts, original artworks, and unique creations from local artists.",
+      type: "Workshop",
     },
     {
       date: "2026-06-22",
@@ -55,6 +62,7 @@ export default function EventsPage() {
       location: "Sibul Kapihan, SBFZ",
       details:
         "A pottery workshop held at Ianthe, providing participants with hands-on experience in traditional Filipino pottery-making techniques.",
+      type: "Workshop",
     },
     {
       date: "2025-09-16",
@@ -64,6 +72,7 @@ export default function EventsPage() {
       location: "SM City Olongapo",
       details:
         "An initiative by SM City Olongapo to showcase and celebrate the craftsmanship and artistry of local Filipino artisans.",
+      type: "Fair",
     },
     {
       date: "2025-10-12",
@@ -73,6 +82,7 @@ export default function EventsPage() {
       location: "Diwa ng Tarlac and Bulwagang Kanlahi, Tarlac City",
       details:
         "Olongapo Zambales Artists (OZA) is a creative collective founded in 2022, born from a shared passion to uplift and unify the art community across Olongapo and the province of Zambales.",
+      type: "Festival",
     },
     {
       date: "2025-11-11",
@@ -82,6 +92,7 @@ export default function EventsPage() {
       location: "Olongapo City, Sibul Kapihan",
       details:
         "A creative gathering where artists and art enthusiasts come together to sketch, sip beverages, and engage in artistic conversations, fostering a community of local artists.",
+      type: "Workshop",
     },
   ];
 
@@ -130,11 +141,108 @@ export default function EventsPage() {
     setSelectedEvent(foundEvent || null);
   };
 
+  const scroll = (direction: "left" | "right") => {
+    if (featuredRef.current) {
+      const { scrollLeft, clientWidth } = featuredRef.current;
+      const scrollTo =
+        direction === "left"
+          ? scrollLeft - clientWidth
+          : scrollLeft + clientWidth;
+
+      featuredRef.current.scrollTo({ left: scrollTo, behavior: "smooth" });
+    }
+  };
+
+  const featuredEvents = events.slice(0, 3).map((event) => ({
+    ...event,
+    type: event.type,
+  }));
+
+  const communityPromotions = [
+    {
+      id: 1,
+      title: "Local Artisan Week",
+      description: "50% off on all handmade crafts at participating stores",
+      image: "/promo1.jpg",
+      validUntil: "2025-12-31",
+    },
+    {
+      id: 2,
+      title: "Cultural Workshop Series",
+      description: "Join our weekly workshops and get 20% off on materials",
+      image: "/promo2.jpg",
+      validUntil: "2025-12-31",
+    },
+  ];
+
   return (
     <div className="events-page">
       <Navbar />
 
       <main role="main">
+        {/* Featured Events Section */}
+        <section className="featured-events-section">
+          <div className="section-header">
+            <h2>Featured Events</h2>
+            <Link href="/events" className="view-all-link">
+              View All Events →
+            </Link>
+          </div>
+
+          <div className="featured-carousel-container">
+            <button
+              className="nav-button prev"
+              onClick={() => scroll("left")}
+              aria-label="Previous"
+            >
+              <FaChevronLeft />
+            </button>
+
+            <div className="featured-events-carousel" ref={featuredRef}>
+              {featuredEvents.map((event, idx) => (
+                <div className="featured-event-card" key={idx}>
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="featured-event-image"
+                  />
+                  <div className="featured-event-content">
+                    <span
+                      className={`event-type-tag ${event.type.toLowerCase()}`}
+                    >
+                      {event.type}
+                    </span>
+                    <h3>{event.title}</h3>
+                    <p className="featured-event-date">{event.dateText}</p>
+                    <p className="featured-event-location">{event.location}</p>
+                    <button
+                      className={`reminder-btn ${
+                        reminders.includes(event.date) ? "active" : ""
+                      }`}
+                      onClick={() => toggleReminder(idx)}
+                    >
+                      {reminders.includes(event.date) ? (
+                        <MdNotificationsActive className="icon-ringing" />
+                      ) : (
+                        <MdNotifications />
+                      )}
+                      Set Reminder
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              className="nav-button next"
+              onClick={() => scroll("right")}
+              aria-label="Next"
+            >
+              <FaChevronRight />
+            </button>
+          </div>
+        </section>
+
         <div className="events-search-bar-container">
           <form
             className="events-search-bar"
@@ -425,10 +533,26 @@ export default function EventsPage() {
             )}
           </aside>
         </div>
+
+        {/* Add Community Promotions section */}
+        <section className="community-promotions">
+          <h2>Community Promotions</h2>
+          <div className="promotions-grid">
+            {communityPromotions.map((promo) => (
+              <div className="promo-card" key={promo.id}>
+                <img src={promo.image} alt={promo.title} />
+                <div className="promo-content">
+                  <h3>{promo.title}</h3>
+                  <p>{promo.description}</p>
+                  <button className="learn-more-btn">Learn More →</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
       <Footer />
     </div>
   );
 }
-
