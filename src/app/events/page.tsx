@@ -318,14 +318,14 @@ export default function EventsPage() {
 
           <button
             type="button"
-            className="filter-button"
+            className="event-filter-button"
             onClick={() => setShowFilters(!showFilters)}
             aria-label="Filter events"
           >
             <FaFilter />
           </button>
           {showFilters && (
-            <div className="filter-dropdown">
+            <div className="event-filter-dropdown">
               {[
                 "Festival",
                 "Craft Fair",
@@ -336,7 +336,7 @@ export default function EventsPage() {
               ].map((type) => (
                 <button
                   key={type}
-                  className={`filter-option ${
+                  className={`event-filter-option ${
                     selectedFilter === type ? "active" : ""
                   }`}
                   onClick={() => {
