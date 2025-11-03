@@ -26,20 +26,6 @@
   overflow: hidden;
 }
 
-.profile-upload-label {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
-  padding: 6px;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .profile-upload-input {
   display: none;
 }
@@ -59,7 +45,6 @@
   font-size: 14px;
   color: #8f7d7d;
   margin-bottom: 24px;
-  cursor: pointer;
   gap: 8px;
 }
 
