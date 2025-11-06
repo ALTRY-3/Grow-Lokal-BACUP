@@ -721,17 +721,19 @@
   object-fit: cover;
 }
 
-.product-info {
+.market-product-info {
   min-height: 100px;
-  background: #2E3F36;
+  width: 100%;
+  background: #2e3f36;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   color: #fff;
   padding: 0.75rem 1rem;
+  text-align: center;
 }
 
-.product-info-top {
+.market-product-info-top {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -761,7 +763,7 @@
   white-space: nowrap;
 }
 
-.product-info-bottom {
+.market-product-info-bottom {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1040,15 +1042,6 @@
 .skeleton-text.short {
   width: 60%;
   height: 14px;
-}
-
-.product-info {
-  background: #2E3F36;
-  width: 100%;
-  height: 85px;
-  text-align: center;
-  color: #fff;
-  padding-top: 8px;
 }
 
 /* Marketplace-specific dropdown overrides removed - using global Navbar.css styles */

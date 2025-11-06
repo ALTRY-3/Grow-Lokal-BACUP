@@ -991,8 +991,8 @@ function Section({
                 </div>
               )}
             </div>
-            <div className="product-info">
-              <div className="product-info-top">
+            <div className="market-product-info">
+              <div className="market-product-info-top">
                 <h3 className="product-name">{product.name}</h3>
                 <p className="product-artist">{product.artistName}</p>
               </div>

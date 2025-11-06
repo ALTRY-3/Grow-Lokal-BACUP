@@ -1125,4 +1125,17 @@
   }
 }
 
+.agreement-label {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.agreement-label:hover {
+  background-color: #f5f5f5;
+}
+
 

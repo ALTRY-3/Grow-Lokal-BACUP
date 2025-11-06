@@ -604,16 +604,6 @@
   -webkit-box-orient: vertical;
 }
 
-.product-artist {
-  font-size: 0.8rem;
-  opacity: 0.85;
-  margin: 0;
-  font-weight: 400;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .product-info-bottom {
   display: flex;
   justify-content: space-between;
@@ -903,10 +893,9 @@
   position: static;  
   width: 100%;      
   padding: 8px;
-  background: transparent;
-  border: 1px solid #ffc46b;
+  background: #af7928;
   border-radius: 6px;
-  color: #ffc46b;
+  color: #fff;
   font-family: poppins, sans-serif;
   font-size: 14px;
   font-weight: 500;
@@ -1190,7 +1179,7 @@
 .home-story-read-more:hover,
 .home-announcement-read-more:hover,
 .home-artisan-read-more:hover {
-  background: #af7928;
+  background: #936520;
   transform: translateY(-2px);
   color: #fff;
 }

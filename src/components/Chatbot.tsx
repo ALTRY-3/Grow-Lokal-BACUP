@@ -1,18 +1,23 @@
 "use client";
 
-import { useState } from "react";
-import { usePathname } from "next/navigation"; 
+import { useState, useRef, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import "./chatbot.css";
 
-export default function Chatbot() {
-  const pathname = usePathname() || ""; 
+// Helper to format time as HH:MM
+function formatTime(date: Date) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
 
-  // All hooks must be called before any conditional returns
+export default function Chatbot() {
+  const pathname = usePathname() || "";
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<{ sender: string; text: string }[]>(
-    []
-  );
+  const [messages, setMessages] = useState<
+    { sender: string; text: string; time: string }[]
+  >([]);
   const [input, setInput] = useState("");
+  const [botTyping, setBotTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const hiddenRoutes = [
     "/login",
@@ -22,53 +27,126 @@ export default function Chatbot() {
     "/otp-verification",
   ];
 
+  // Auto-scroll to bottom on new message
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, botTyping]);
+
+  // Show intro message when chat opens
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      setMessages([
+        {
+          sender: "bot",
+          text: "Hi there! 👋 I’m KaLokal, your GrowLokal Assistant. How can I help today?",
+          time: formatTime(new Date()),
+        },
+      ]);
+    }
+  }, [isOpen]);
+
   if (hiddenRoutes.includes(pathname)) {
     return null;
   }
 
+  // Handle sending user message
   const handleSend = () => {
     if (!input.trim()) return;
-
-    const newMessage = { sender: "user", text: input };
+    const now = formatTime(new Date());
+    const newMessage = { sender: "user", text: input, time: now };
     setMessages((prev) => [...prev, newMessage]);
     setInput("");
+    setBotTyping(true);
 
     setTimeout(() => {
       setMessages((prev) => [
         ...prev,
-        { sender: "bot", text: "This is a sample response!" },
+        {
+          sender: "bot",
+          text: "This is a sample response!",
+          time: formatTime(new Date()),
+        },
       ]);
-    }, 800);
+      setBotTyping(false);
+    }, 900);
   };
 
   return (
     <div className="chatbot-container">
+      {/* Floating button when closed */}
       {!isOpen && (
-        <button className="chatbot-button" onClick={() => setIsOpen(true)}>
-          <i className="fas fa-comment-dots"></i>
+        <button
+          className="chatbot-button"
+          aria-label="Open chatbot"
+          onClick={() => setIsOpen(true)}
+        >
+          <span className="chatbot-pulse" />
+          <span className="chatbot-dots-icon">
+            <i className="fas fa-comment-dots"></i>
+          </span>
         </button>
       )}
 
+      {/* Chat window */}
       {isOpen && (
-        <div className="chatbot-window">
+        <div className="chatbot-window chatbot-window-animate">
+          {/* Header with branding */}
           <div className="chatbot-header">
-            <span>Chat with us</span>
+            <div className="chatbot-header-left">
+              <div className="chatbot-avatar">
+                <img
+                  src="/chatbotpfp.png"
+                  alt="KaLokal"
+                  className="chatbot-avatar-img"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "https://ui-avatars.com/api/?name=KaLokal&background=2e3f36&color=ffc46b&rounded=true";
+                  }}
+                />
+              </div>
+              <div className="chatbot-title">KaLokal</div>
+            </div>
             <button
               className="chatbot-close"
+              aria-label="Close chatbot"
               onClick={() => setIsOpen(false)}
             >
               ✕
             </button>
           </div>
 
+          {/* Messages area */}
           <div className="chatbot-messages">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`chatbot-message ${msg.sender}`}>
-                {msg.text}
+              <div
+                key={idx}
+                className={`chatbot-message ${msg.sender}`}
+                tabIndex={0}
+                aria-label={`${msg.sender === "user" ? "You" : "KaLokal"}: ${
+                  msg.text
+                }`}
+              >
+                <span className="chatbot-message-text">{msg.text}</span>
+                <span className="chatbot-message-time">{msg.time}</span>
               </div>
             ))}
+            {/* Bot typing indicator */}
+            {botTyping && (
+              <div className="chatbot-message bot chatbot-typing">
+                <span className="chatbot-message-text">
+                  <span className="typing-dots">
+                    <span>.</span>
+                    <span>.</span>
+                    <span>.</span>
+                  </span>{" "}
+                  typing...
+                </span>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
 
+          {/* Input area */}
           <div className="chatbot-input">
             <input
               type="text"
@@ -76,9 +154,15 @@ export default function Chatbot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
+              aria-label="Type your message"
             />
-            <button onClick={handleSend} className="chatbot-send">
-              <i className="fas fa-microphone"></i>
+            <button
+              onClick={handleSend}
+              className="chatbot-send"
+              aria-label="Send message"
+              disabled={!input.trim()}
+            >
+              <i className="fas fa-paper-plane"></i>
             </button>
           </div>
         </div>

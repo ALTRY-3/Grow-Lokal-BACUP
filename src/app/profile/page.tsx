@@ -420,6 +420,12 @@ export default function ProfilePage() {
   const [profileError, setProfileError] = useState("");
   const [ordersError, setOrdersError] = useState("");
 
+  // Add these state declarations with your other useState hooks
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showSaveError, setShowSaveError] = useState(false);
+
   // Profile Data
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -1069,12 +1075,6 @@ export default function ProfilePage() {
 
   const [pickupBarangay, setPickupBarangay] = useState("");
 
-  const [isSaved, setIsSaved] = useState(false);
-  const [showSaveError, setShowSaveError] = useState(false);
-  const [showSaveModal, setShowSaveModal] = useState(false);
-  const [showProgressModal, setShowProgressModal] = useState(false);
-  const [showSubmitModal, setShowSubmitModal] = useState(false);
-
   const [validIdFile, setValidIdFile] = useState<File | null>(null);
 
   const [sellerStoryTitle, setSellerStoryTitle] = useState("");
@@ -1113,6 +1113,18 @@ export default function ProfilePage() {
   const [agreedToShipping, setAgreedToShipping] = useState(false);
   const [craftType, setCraftType] = useState<string>("");
 
+  // Add this state
+  const [agreeToAll, setAgreeToAll] = useState(false);
+  // Add this function with your other state declarations
+  const handleAgreeToAll = (checked: boolean) => {
+    setAgreeToAll(checked);
+    setAgreedToTerms(checked);
+    setAgreedToCommission(checked);
+    setAgreedToShipping(checked);
+  };
+
+  // Then replace the inline hover style with a CSS class
+  // Add this CSS to profile.css:
   // Validation functions for each step
   const isStep1Valid = () => {
     const validations = {
@@ -2531,7 +2543,7 @@ export default function ProfilePage() {
                           fontSize: "15px",
                         }}
                       >
-                        📋 What Happens Next?
+                        What Happens Next?
                       </h4>
                       <div
                         style={{
@@ -2547,8 +2559,7 @@ export default function ProfilePage() {
                             1. Review
                           </div>
                           <div style={{ color: "#666" }}>
-                            We&apos;ll verify your details within 1-3 business
-                            days
+                            We&apos;ll verify your details.
                           </div>
                         </div>
                         <div style={{ flex: 1 }}>
@@ -2684,7 +2695,7 @@ export default function ProfilePage() {
                         }}
                       >
                         <h4 style={{ margin: 0, fontSize: "15px" }}>
-                          ✨ Your Story
+                          Your Story
                         </h4>
                         <button
                           type="button"
@@ -2736,90 +2747,147 @@ export default function ProfilePage() {
                         marginTop: "20px",
                       }}
                     >
-                      <h4 style={{ marginBottom: "16px", fontSize: "15px" }}>
-                        📝 Seller Agreements
+                      <h4
+                        style={{
+                          marginBottom: "16px",
+                          fontSize: "15px",
+                          color: "#2E3F36",
+                        }}
+                      >
+                        Seller Agreements
                       </h4>
 
+                      {/* Agree to All Option */}
                       <label
+                        className="agreement-label"
                         style={{
                           display: "flex",
                           alignItems: "flex-start",
-                          marginBottom: "12px",
+                          marginBottom: "16px",
+                          padding: "12px",
+                          backgroundColor: "#faf8f5",
+                          borderRadius: "6px",
                           cursor: "pointer",
                         }}
                       >
                         <input
                           type="checkbox"
-                          checked={agreedToTerms}
-                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          checked={agreeToAll}
+                          onChange={(e) => handleAgreeToAll(e.target.checked)}
                           style={{
                             marginTop: "3px",
                             marginRight: "10px",
                             cursor: "pointer",
                           }}
-                          required
                         />
-                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
-                          I agree to the <strong>Terms and Conditions</strong>{" "}
-                          for selling on GrowLokal, including product quality
-                          standards and customer service requirements.
+                        <span style={{ fontWeight: "600", color: "#2E3F36" }}>
+                          Agree to All Terms & Conditions
                         </span>
                       </label>
 
-                      <label
+                      <div
                         style={{
                           display: "flex",
-                          alignItems: "flex-start",
-                          marginBottom: "12px",
-                          cursor: "pointer",
+                          flexDirection: "column",
+                          gap: "12px",
                         }}
                       >
-                        <input
-                          type="checkbox"
-                          checked={agreedToCommission}
-                          onChange={(e) =>
-                            setAgreedToCommission(e.target.checked)
-                          }
+                        {/* Terms and Conditions */}
+                        <label
                           style={{
-                            marginTop: "3px",
-                            marginRight: "10px",
+                            display: "flex",
+                            alignItems: "flex-start",
                             cursor: "pointer",
+                            padding: "8px",
+                            borderRadius: "4px",
+                            transition: "background-color 0.2s",
                           }}
-                          required
-                        />
-                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
-                          I understand and accept the{" "}
-                          <strong>commission structure</strong> (platform fee
-                          applies to each sale).
-                        </span>
-                      </label>
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = "#f5f5f5";
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor =
+                              "transparent";
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            style={{
+                              marginTop: "3px",
+                              marginRight: "10px",
+                              cursor: "pointer",
+                            }}
+                            required
+                          />
+                          <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                            I have read and agree to GrowLokal's Terms and
+                            Conditions, including guidelines on product quality,
+                            authenticity, and customer service.
+                          </span>
+                        </label>
 
-                      <label
-                        style={{
-                          display: "flex",
-                          alignItems: "flex-start",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={agreedToShipping}
-                          onChange={(e) =>
-                            setAgreedToShipping(e.target.checked)
-                          }
+                        {/* Commission Structure */}
+                        <label
                           style={{
-                            marginTop: "3px",
-                            marginRight: "10px",
+                            display: "flex",
+                            alignItems: "flex-start",
                             cursor: "pointer",
+                            padding: "8px",
+                            borderRadius: "4px",
                           }}
-                          required
-                        />
-                        <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
-                          I commit to <strong>timely order fulfillment</strong>{" "}
-                          and will communicate shipping/pickup details clearly
-                          to customers.
-                        </span>
-                      </label>
+                        >
+                          <input
+                            type="checkbox"
+                            checked={agreedToCommission}
+                            onChange={(e) =>
+                              setAgreedToCommission(e.target.checked)
+                            }
+                            style={{
+                              marginTop: "3px",
+                              marginRight: "10px",
+                              cursor: "pointer",
+                            }}
+                            required
+                          />
+                          <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                            I understand and accept GrowLokal's commission
+                            structure, where a platform service fee applies to
+                            each completed sale.
+                          </span>
+                        </label>
+
+                        {/* Shipping Agreement */}
+                        <label
+                          style={{
+                            display: "flex",
+                            alignItems: "flex-start",
+                            cursor: "pointer",
+                            padding: "8px",
+                            borderRadius: "4px",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={agreedToShipping}
+                            onChange={(e) =>
+                              setAgreedToShipping(e.target.checked)
+                            }
+                            style={{
+                              marginTop: "3px",
+                              marginRight: "10px",
+                              cursor: "pointer",
+                            }}
+                            required
+                          />
+                          <span style={{ fontSize: "14px", lineHeight: "1.5" }}>
+                            I commit to timely order processing, accurate stock
+                            updates, and clear communication of shipping or
+                            pickup details to customers.
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2845,7 +2913,7 @@ export default function ProfilePage() {
                       color: "#856404",
                     }}
                   >
-                    <strong>⚠️ Please complete all required fields:</strong>
+                    <strong>Please complete all required fields:</strong>
                     <ul style={{ margin: "8px 0 0 20px", lineHeight: "1.8" }}>
                       {shopName.trim().length < 3 && (
                         <li>Shop Name (at least 3 characters)</li>
@@ -2869,50 +2937,16 @@ export default function ProfilePage() {
 
                 <div className="selling-buttons" style={{ marginTop: "24px" }}>
                   <button
-                    className="order-btn"
-                    onClick={() => {
-                      if (!isShopInfoComplete()) {
-                        setShowSaveError(true);
-                        return;
-                      }
-                      setIsSaved(true);
-                      setShowSaveError(false);
-                      setShowSaveModal(true);
-                    }}
-                    disabled={!isShopInfoComplete()}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minWidth: "50px",
-                      padding: "10px 16px",
-                      opacity: !isShopInfoComplete() ? 0.5 : 1,
-                      cursor: !isShopInfoComplete() ? "not-allowed" : "pointer",
-                    }}
-                    title="Save Progress"
-                  >
-                    <FaSave style={{ fontSize: "18px" }} />
-                  </button>
-
-                  <button
                     className="order-btn primary"
-                    onClick={async () => {
-                      if (!isSaved) {
-                        setShowSaveError(true);
-                        return;
-                      }
-                      setShowSaveError(false);
-
+                    onClick={() => {
                       if (activeStep < 2) {
                         setActiveStep(activeStep + 1);
-                        setIsSaved(false);
                       } else {
                         // Submit the application
-                        await handleSubmitSellerApplication();
+                        handleSubmitSellerApplication();
                       }
                     }}
                     disabled={
-                      !isSaved ||
                       (activeStep === 0 && !isStep1Valid()) ||
                       (activeStep === 1 && !isStep2Valid()) ||
                       (activeStep === 2 && !isStep3Valid())
@@ -2931,31 +2965,6 @@ export default function ProfilePage() {
                     </button>
                   )}
                 </div>
-
-                {showSaveError && (
-                  <p
-                    style={{ color: "red", fontSize: "13px", marginTop: "8px" }}
-                  >
-                    Please click “Save” first before proceeding.
-                  </p>
-                )}
-
-                {showSaveModal && (
-                  <div style={modalOverlayStyle}>
-                    <div style={modalBoxStyle}>
-                      <h3 style={modalTitleStyle}>Progress Saved</h3>
-                      <p style={modalTextStyle}>
-                        Your progress for this step has been successfully saved.
-                      </p>
-                      <button
-                        className="order-btn primary"
-                        onClick={() => setShowSaveModal(false)}
-                      >
-                        OK
-                      </button>
-                    </div>
-                  </div>
-                )}
 
                 {showProgressModal && (
                   <div style={modalOverlayStyle}>
