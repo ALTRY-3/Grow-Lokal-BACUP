@@ -1,0 +1,93 @@
+.artisan-profile-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f8f8f8;
+  min-height: 100vh;
+  padding-bottom: 40px;
+}
+
+.artisan-card {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 4px 24px rgba(46,63,54,0.10);
+  padding: 38px 48px 32px 48px;
+  width: calc(100vw - 4rem); /* leave 2rem margin on each side */
+  max-width: calc(100vw - 4rem);
+  margin-top: 38px;
+  margin-left: 2rem;
+  margin-right: 2rem;
+  box-sizing: border-box;
+}
+
+.artisan-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+}
+
+.artisan-avatar {
+  width: 120px !important;
+  height: 120px !important;
+  border-radius: 50%;
+  border: 4px solid #af7928;
+  object-fit: cover;
+  margin-right: 32px;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.shop-name {
+  font-family: 'Poppins', sans-serif;
+}
+
+.artisan-name {
+  font-family: 'Poppins', sans-serif;
+}
+
+.artisan-category-type {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.80rem;
+  font-weight: 500;
+  background: #af7928;
+  color: #fff;
+  border: 1px solid #af7928;
+  margin-right: 2px;
+}
+
+.artisan-craft-type {
+  display: inline-block;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.80rem;
+  font-weight: 500;
+  background: #2E3F36;
+  color: #FFC46B;
+  border: 2px solid #FFC46B;
+  margin-right: 6px;
+}
+
+.artisan-story-image {
+  display: block;
+  margin: 0 auto;
+}
+
+@media (max-width: 1000px) {
+  .artisan-card {
+    padding: 18px 8px 18px 8px;
+    max-width: 98vw;
+    margin-left: 1vw;
+    margin-right: 1vw;
+    width: 98vw;
+  }
+  .artisan-card-top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .artisan-avatar {
+    margin-right: 0;
+    margin-bottom: 18px;
+  }
+}
