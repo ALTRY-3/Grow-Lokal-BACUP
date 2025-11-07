@@ -14,14 +14,16 @@ import {
   FaClock,
   FaMapMarkerAlt,
   FaUser,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import "./events.css";
+import { useSearchParams } from "next/navigation";
 
 // Update the Event type definition
 type Event = {
   date: string;
   title: string;
-  image: string;
   dateText: string;
   time: string;
   location: string;
@@ -42,10 +44,9 @@ const events: Event[] = [
   {
     date: "2025-09-15",
     title: "Subic Bay Cultural Festival",
-    image: "/event1.jpg",
     dateText: "March 15, 2025",
     time: "9:00 AM",
-    location: "SM Downtown Olongapo",
+    location: "Subic Bay Freeport Zone",
     details:
       "Annual celebration of local culture featuring artisan booths, traditional performances, and cultural exhibits.",
     type: "Fair",
@@ -54,7 +55,6 @@ const events: Event[] = [
   {
     date: "2026-02-17",
     title: "Alab Sining 2026",
-    image: "/event2.jpg",
     dateText: "February 17, 2026",
     time: "9:00 AM",
     location: "SM City Olongapo Central",
@@ -66,7 +66,6 @@ const events: Event[] = [
   {
     date: "2025-10-25",
     title: "This Is Not Art Escape",
-    image: "/event3.png",
     dateText: "October 25, 2025",
     time: "9:00 AM",
     location: "Ayala Malls Harbor Point",
@@ -77,7 +76,6 @@ const events: Event[] = [
   {
     date: "2026-06-22",
     title: "Crft PINAY Pottery Experience",
-    image: "/event4.png",
     dateText: "June 22, 2026",
     time: "9:00 AM",
     location: "Sibul Kapihan, SBFZ",
@@ -88,7 +86,6 @@ const events: Event[] = [
   {
     date: "2025-09-16",
     title: "My City, My SM, My Crafts",
-    image: "/event5.png",
     dateText: "September 16, 2025",
     time: "9:00 AM",
     location: "SM City Olongapo",
@@ -99,7 +96,6 @@ const events: Event[] = [
   {
     date: "2025-10-12",
     title: "Luzon Art Fair 2025",
-    image: "/event6.png",
     dateText: "October 12, 2025",
     time: "9:00 AM",
     location: "Diwa ng Tarlac and Bulwagang Kanlahi, Tarlac City",
@@ -110,7 +106,6 @@ const events: Event[] = [
   {
     date: "2025-11-11",
     title: "Sip and Sketch 'Gapo",
-    image: "/event7.png",
     dateText: "November 11, 2025",
     time: "9:00 AM",
     location: "Olongapo City, Sibul Kapihan",
@@ -132,23 +127,48 @@ export default function EventsPage() {
   const [filteredEvents, setFilteredEvents] = useState<Event[]>(events);
 
   const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
+    // Check for event from query string (map page)
+    const eventTitle = searchParams?.get("event");
+    if (eventTitle) {
+      const foundEvent = events.find((event) => event.title === eventTitle);
+      if (foundEvent) {
+        setFilteredEvents([foundEvent]);
+        setSelectedEvent(foundEvent);
+        setDate(new Date(foundEvent.date));
+        return; // Don't check localStorage if query param is present
+      }
+    }
+
+    // Fallback: Check for selected date from localStorage (home page)
     const selectedDate = localStorage.getItem("selectedEventDate");
     if (selectedDate) {
-      setDate(new Date(selectedDate));
+      // Sanitize date string: remove spaces and ensure format is YYYY-MM-DD
+      const cleanDate = selectedDate.replace(/\s+/g, "");
+      const parsedDate = new Date(cleanDate);
 
-      const dateEvents = events.filter((event) => event.date === selectedDate);
+      if (!isNaN(parsedDate.getTime())) {
+        setDate(parsedDate);
 
-      setFilteredEvents(dateEvents);
+        const dateEvents = events.filter((event) => event.date === cleanDate);
 
-      if (dateEvents.length > 0) {
-        setSelectedEvent(dateEvents[0]);
+        setFilteredEvents(dateEvents);
+
+        if (dateEvents.length > 0) {
+          setSelectedEvent(dateEvents[0]);
+        }
+      } else {
+        // fallback: show all events if date is invalid
+        setFilteredEvents(events);
+        setSelectedEvent(null);
+        setDate(new Date());
       }
 
       localStorage.removeItem("selectedEventDate");
     }
-  }, []);
+  }, [searchParams]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -234,51 +254,49 @@ export default function EventsPage() {
                   ".featured-events-grid"
                 );
                 if (container) {
-                  container.scrollLeft -= 650; // Width of card + gap
+                  container.scrollLeft -= 650;
                 }
               }}
               aria-label="Previous events"
             >
-              ←
+              <FaChevronLeft />
             </button>
 
             <div className="featured-events-grid">
               {featuredEvents.map((event, idx) => (
-                <div className="featured-event-card" key={idx}>
-                  <div className="event-image-container">
-                    <img
-                      src={event.image}
-                      alt={event.title}
-                      className="event-image"
-                    />
+                <div className="all-event-card featured" key={idx}>
+                  <div className="all-event-header">
+                    <span
+                      className={`all-event-type ${event.type.toLowerCase()}`}
+                    >
+                      {event.type}
+                    </span>
+                    <button
+                      className={`reminder-btn ${
+                        reminders.includes(event.date) ? "active" : ""
+                      }`}
+                      onClick={() => toggleReminder(idx)}
+                    >
+                      {reminders.includes(event.date) ? (
+                        <MdNotificationsActive className="icon-ringing" />
+                      ) : (
+                        <MdNotifications />
+                      )}
+                    </button>
                   </div>
-                  <div className="event-content">
-                    <div className="event-header">
-                      <span
-                        className={`event-type-tag ${event.type.toLowerCase()}`}
-                      >
-                        {event.type}
-                      </span>
-                      <button
-                        className={`reminder-btn ${
-                          reminders.includes(event.date) ? "active" : ""
-                        }`}
-                        onClick={() => toggleReminder(idx)}
-                      >
-                        {reminders.includes(event.date) ? (
-                          <MdNotificationsActive className="icon-ringing" />
-                        ) : (
-                          <MdNotifications />
-                        )}
-                      </button>
-                    </div>
-                    <h3 className="event-title">{event.title}</h3>
-                    <div className="event-datetime">
-                      <span className="event-date">{event.dateText}</span>
-                      <span className="separator">|</span>
-                      <span className="event-time">{event.time}</span>
-                    </div>
-                    <p className="event-description">{event.details}</p>
+                  <h3 className="all-event-title">{event.title}</h3>
+                  <div className="all-event-meta">
+                    <FaCalendar />
+                    <span>{event.dateText}</span>
+                  </div>
+                  <div className="all-event-meta">
+                    <FaClock />
+                    <span>{event.time}</span>
+                  </div>
+                  <p className="all-event-description">{event.details}</p>
+                  <div className="all-event-location">
+                    <FaMapMarkerAlt />
+                    <span>{event.location}</span>
                   </div>
                 </div>
               ))}
@@ -291,12 +309,12 @@ export default function EventsPage() {
                   ".featured-events-grid"
                 );
                 if (container) {
-                  container.scrollLeft += 650; // Width of card + gap
+                  container.scrollLeft += 650;
                 }
               }}
               aria-label="Next events"
             >
-              →
+              <FaChevronRight />
             </button>
           </div>
         </section>

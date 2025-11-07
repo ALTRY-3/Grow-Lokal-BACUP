@@ -45,6 +45,7 @@ export default function Chatbot() {
     "/reset-password",
     "/forgot-password",
     "/otp-verification",
+    "/map",
   ];
 
   // Auto-scroll to bottom on new message
