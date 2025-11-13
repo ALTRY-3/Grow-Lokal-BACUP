@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ImageCarousel from "@/components/ImageCarousel1";
+import ProductModal from "@/components/ProductModal"; // Add this import
 import { FaStar } from "react-icons/fa";
 import { MapPin } from "lucide-react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -314,7 +315,8 @@ const artisanStories = [
 export default function HomePage() {
   const [eventReminders, setEventReminders] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null); // Change this
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set()); // Add wishlist state
   const router = useRouter();
 
   // Add state to track scroll positions for each carousel
@@ -354,6 +356,14 @@ export default function HomePage() {
       setSelectedProduct(JSON.parse(selectedProductFromHome));
       // Clear the stored product
       localStorage.removeItem("selectedProduct");
+    }
+  }, []);
+
+  // Load wishlist from localStorage
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem("wishlist");
+    if (savedWishlist) {
+      setWishlist(new Set(JSON.parse(savedWishlist)));
     }
   }, []);
 
@@ -406,24 +416,33 @@ export default function HomePage() {
   }, [openMenuId]);
 
   const handleProductClick = (product: any) => {
-    // Store the product details in localStorage
-    localStorage.setItem(
-      "selectedProduct",
-      JSON.stringify({
-        img: product.image,
-        hoverImg: product.image,
-        name: product.name,
-        artist: product.artist,
-        price: `₱${product.price.toFixed(2)}`,
-        craftType: product.craftType,
-        category: product.category,
-        productId: product.id.toString(),
-        maxStock: 10, // You can adjust this as needed
-      })
-    );
+    // Convert product to modal format
+    const modalProduct = {
+      img: product.image,
+      hoverImg: product.image,
+      name: product.name,
+      artist: product.artist,
+      price: `₱${product.price.toFixed(2)}`,
+      craftType: product.craftType,
+      category: product.category,
+      productId: product.id.toString(),
+      maxStock: 10,
+      soldCount: 0,
+    };
+    setSelectedProduct(modalProduct);
+  };
 
-    // Navigate to marketplace
-    router.push("/marketplace");
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) => {
+      const newWishlist = new Set(prev);
+      if (newWishlist.has(productId)) {
+        newWishlist.delete(productId);
+      } else {
+        newWishlist.add(productId);
+      }
+      localStorage.setItem("wishlist", JSON.stringify(Array.from(newWishlist)));
+      return newWishlist;
+    });
   };
 
   const handleViewDetails = (eventTitle: string) => {
@@ -902,6 +921,27 @@ export default function HomePage() {
       </main>
 
       <Footer />
+
+      {/* Add ProductModal */}
+      {selectedProduct && (
+        <ProductModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          isInWishlist={
+            selectedProduct.productId
+              ? wishlist.has(selectedProduct.productId)
+              : false
+          }
+          onToggleWishlist={
+            selectedProduct.productId
+              ? () => toggleWishlist(selectedProduct.productId)
+              : undefined
+          }
+          onProductChange={(newProduct) => {
+            setSelectedProduct(newProduct);
+          }}
+        />
+      )}
     </div>
   );
 }
