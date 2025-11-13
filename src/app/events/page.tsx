@@ -22,14 +22,22 @@ import { useSearchParams } from "next/navigation";
 
 // Update the Event type definition
 type Event = {
+  id: number; // Add this line
   date: string;
   title: string;
   dateText: string;
   time: string;
   location: string;
   details: string;
-  type: "Festival" | "Workshop" | "Fair";
-  organizer?: string; // Add optional organizer property
+  type:
+    | "Festival"
+    | "Craft Fair"
+    | "Local Market"
+    | "Cultural Show"
+    | "Business Campaign"
+    | "Workshop"
+    | "Demo";
+  organizer?: string;
 };
 
 type EventType =
@@ -38,10 +46,12 @@ type EventType =
   | "Local Market"
   | "Cultural Show"
   | "Business Campaign"
-  | "Workshop";
+  | "Workshop"
+  | "Demo";
 
 const events: Event[] = [
   {
+    id: 1, // Add unique ID
     date: "2025-09-15",
     title: "Subic Bay Cultural Festival",
     dateText: "March 15, 2025",
@@ -49,10 +59,11 @@ const events: Event[] = [
     location: "Subic Bay Freeport Zone",
     details:
       "Annual celebration of local culture featuring artisan booths, traditional performances, and cultural exhibits.",
-    type: "Fair",
+    type: "Cultural Show",
     organizer: "Olongapo City Tourism Office",
   },
   {
+    id: 2, // Add unique ID
     date: "2026-02-17",
     title: "Alab Sining 2026",
     dateText: "February 17, 2026",
@@ -60,10 +71,11 @@ const events: Event[] = [
     location: "SM City Olongapo Central",
     details:
       "An art exhibit held at SM City Olongapo Central, showcasing traditional and contemporary artworks by artists from Olongapo, Zambales, and Bataan.",
-    type: "Festival",
+    type: "Craft Fair",
     organizer: "SM City Olongapo",
   },
   {
+    id: 3, // Add unique ID
     date: "2025-10-25",
     title: "This Is Not Art Escape",
     dateText: "October 25, 2025",
@@ -71,9 +83,10 @@ const events: Event[] = [
     location: "Ayala Malls Harbor Point",
     details:
       "A two-day art market at Ayala Malls Harbor Point, offering handmade crafts, original artworks, and unique creations from local artists.",
-    type: "Workshop",
+    type: "Local Market",
   },
   {
+    id: 4, // Add unique ID
     date: "2026-06-22",
     title: "Crft PINAY Pottery Experience",
     dateText: "June 22, 2026",
@@ -84,6 +97,7 @@ const events: Event[] = [
     type: "Workshop",
   },
   {
+    id: 5, // Add unique ID
     date: "2025-09-16",
     title: "My City, My SM, My Crafts",
     dateText: "September 16, 2025",
@@ -91,9 +105,10 @@ const events: Event[] = [
     location: "SM City Olongapo",
     details:
       "An initiative by SM City Olongapo to showcase and celebrate the craftsmanship and artistry of local Filipino artisans.",
-    type: "Fair",
+    type: "Craft Fair",
   },
   {
+    id: 6, // Add unique ID
     date: "2025-10-12",
     title: "Luzon Art Fair 2025",
     dateText: "October 12, 2025",
@@ -104,6 +119,7 @@ const events: Event[] = [
     type: "Festival",
   },
   {
+    id: 7, // Add unique ID
     date: "2025-11-11",
     title: "Sip and Sketch 'Gapo",
     dateText: "November 11, 2025",
@@ -112,6 +128,28 @@ const events: Event[] = [
     details:
       "A creative gathering where artists and art enthusiasts come together to sketch, sip beverages, and engage in artistic conversations, fostering a community of local artists.",
     type: "Workshop",
+  },
+  {
+    id: 8, // Different ID for second Pottery Demonstration
+    date: "2026-03-20",
+    title: "Pottery Demonstration",
+    dateText: "March 20, 2026",
+    time: "9:00 AM",
+    location: "Olongapo City, Triangle",
+    details:
+      "A hands-on pottery demonstration showcasing the art of shaping clay into functional and decorative pieces. Attendees will observe traditional and modern pottery techniques, learn about the tools and processes involved, and gain a deeper appreciation for the craftsmanship behind each creation. Open to artists, students, and the public who wish to explore the beauty of handmade ceramics.",
+    type: "Demo",
+  },
+  {
+    id: 9, // Different ID for third event
+    date: "2026-03-25",
+    title: "Cultural Festival", // Can have same title
+    dateText: "March 25, 2026",
+    time: "9:00 AM",
+    location: "Magsaysay Drive, Olongapo City",
+    details:
+      "Experience the art of pottery up close in this live demonstration featuring the creative process from clay molding to final design. Participants will witness various shaping and glazing techniques, learn about the cultural roots of pottery, and discover how simple clay can be transformed into timeless works of art. Ideal for anyone curious about craftsmanship and creative expression.",
+    type: "Demo",
   },
 ];
 
@@ -126,20 +164,21 @@ export default function EventsPage() {
   const [selectedFilter, setSelectedFilter] = useState<EventType | null>(null);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>(events);
 
-  const eventRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [emphasizedEvent, setEmphasizedEvent] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
   useEffect(() => {
     // Check for event from query string (map page)
     const eventTitle = searchParams?.get("event");
-    if (eventTitle) {
-      const foundEvent = events.find((event) => event.title === eventTitle);
-      if (foundEvent) {
-        setFilteredEvents([foundEvent]);
-        setSelectedEvent(foundEvent);
-        setDate(new Date(foundEvent.date));
-        return; // Don't check localStorage if query param is present
-      }
+    if (eventTitle && eventRefs.current[eventTitle]) {
+      eventRefs.current[eventTitle]?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+      setEmphasizedEvent(eventTitle);
+      const timer = setTimeout(() => setEmphasizedEvent(null), 2000);
+      return () => clearTimeout(timer);
     }
 
     // Fallback: Check for selected date from localStorage (home page)
@@ -168,7 +207,7 @@ export default function EventsPage() {
 
       localStorage.removeItem("selectedEventDate");
     }
-  }, [searchParams]);
+  }, [searchParams, filteredEvents]);
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -220,6 +259,14 @@ export default function EventsPage() {
   // Add featured events from your existing events
   const featuredEvents = events.slice(0, 3);
 
+  // Add this helper function at the top of the component
+  const isPastEvent = (eventDate: string): boolean => {
+    const eventDateTime = new Date(eventDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return eventDateTime < today;
+  };
+
   return (
     <div className="events-page">
       <Navbar />
@@ -264,7 +311,7 @@ export default function EventsPage() {
 
             <div className="featured-events-grid">
               {featuredEvents.map((event, idx) => (
-                <div className="all-event-card featured" key={idx}>
+                <div className="all-event-card featured" key={event.id}>
                   <div className="all-event-header">
                     <span
                       className={`all-event-type ${event.type.toLowerCase()}`}
@@ -275,7 +322,15 @@ export default function EventsPage() {
                       className={`reminder-btn ${
                         reminders.includes(event.date) ? "active" : ""
                       }`}
-                      onClick={() => toggleReminder(idx)}
+                      onClick={() =>
+                        !isPastEvent(event.date) && toggleReminder(idx)
+                      }
+                      disabled={isPastEvent(event.date)}
+                      title={
+                        isPastEvent(event.date)
+                          ? "Cannot set reminder for past events"
+                          : "Set reminder"
+                      }
                     >
                       {reminders.includes(event.date) ? (
                         <MdNotificationsActive className="icon-ringing" />
@@ -420,10 +475,14 @@ export default function EventsPage() {
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event, idx) => (
                 <article
-                  className="all-event-card"
-                  key={idx}
+                  className={`all-event-card${
+                    emphasizedEvent === event.title ? " emphasized" : ""
+                  }`}
+                  key={event.id} // Use id instead of title
                   ref={(el: HTMLDivElement | null) => {
-                    eventRefs.current[idx] = el;
+                    if (el) {
+                      eventRefs.current[event.title] = el;
+                    }
                   }}
                 >
                   <div className="all-event-header">
@@ -436,7 +495,20 @@ export default function EventsPage() {
                       className={`reminder-btn ${
                         reminders.includes(event.date) ? "active" : ""
                       }`}
-                      onClick={() => toggleReminder(idx)}
+                      onClick={() => {
+                        const eventIndex = events.findIndex(
+                          (e) => e.id === event.id
+                        );
+                        if (!isPastEvent(event.date)) {
+                          toggleReminder(eventIndex);
+                        }
+                      }}
+                      disabled={isPastEvent(event.date)}
+                      title={
+                        isPastEvent(event.date)
+                          ? "Cannot set reminder for past events"
+                          : "Set reminder"
+                      }
                     >
                       {reminders.includes(event.date) ? (
                         <MdNotificationsActive className="icon-ringing" />
@@ -528,23 +600,23 @@ export default function EventsPage() {
                       ? "active"
                       : ""
                   }`}
-                  aria-pressed={reminders.includes(
+                  disabled={isPastEvent(
                     date.getFullYear() +
                       "-" +
                       String(date.getMonth() + 1).padStart(2, "0") +
                       "-" +
                       String(date.getDate()).padStart(2, "0")
                   )}
-                  aria-label={
-                    reminders.includes(
+                  title={
+                    isPastEvent(
                       date.getFullYear() +
                         "-" +
                         String(date.getMonth() + 1).padStart(2, "0") +
                         "-" +
                         String(date.getDate()).padStart(2, "0")
                     )
-                      ? "Remove reminder for this date"
-                      : "Set a reminder for this date"
+                      ? "Cannot set reminder for past dates"
+                      : "Set reminder"
                   }
                   onClick={() => {
                     const selectedDateStr =
@@ -558,7 +630,7 @@ export default function EventsPage() {
                         new Date(event.date).toDateString() ===
                         date.toDateString()
                     );
-                    if (!hasEvent) return;
+                    if (!hasEvent || isPastEvent(selectedDateStr)) return;
 
                     setReminders((reminders) =>
                       reminders.includes(selectedDateStr)

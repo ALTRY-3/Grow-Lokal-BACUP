@@ -1134,6 +1134,24 @@
   transform: translateY(-4px) scale(1.02);
 }
 
+.all-event-card.emphasized {
+  box-shadow: 0 0 0 4px #ffc46b, 0 4px 12px rgba(175,121,40,0.13);
+  border-color: #ffc46b;
+  transition: box-shadow 0.4s cubic-bezier(0.4,0,0.2,1), border-color 0.4s;
+  z-index: 2;
+}
+
+.reminder-btn:disabled,
+.calendar-icon-box:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.reminder-btn:disabled:hover,
+.calendar-icon-box:disabled:hover {
+  background-color: transparent;
+  color: inherit;
+}
 @media (max-width: 900px) {
   .featured-events-grid .all-event-card.featured {
     min-width: 90vw;

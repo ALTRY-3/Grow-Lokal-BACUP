@@ -200,16 +200,16 @@ const upcomingEvents = [
   {
     title: "Pottery Demonstration",
     type: "Demo",
-    date: "March 20, 2025",
+    date: "March 20, 2026",
     location: "Olongapo City, Triangle",
-    fullDate: "2025-03-20",
+    fullDate: "2026-03-20",
   },
   {
     title: "Cultural Festival",
     type: "Festival",
-    date: "March 25, 2025",
-    location: "Magsaysay",
-    fullDate: "2025-03-25",
+    date: "March 25, 2026",
+    location: "Magsaysay Drive, Olongapo City",
+    fullDate: "2026-03-25",
   },
   {
     title: "Sip and Sketch 'Gapo",
@@ -404,11 +404,9 @@ export default function HomePage() {
     router.push("/marketplace");
   };
 
-  const handleViewDetails = (eventDate: string) => {
-    // Store the selected date in localStorage
-    localStorage.setItem("selectedEventDate", eventDate);
-    // Navigate to events page
-    router.push("/events");
+  const handleViewDetails = (eventTitle: string) => {
+    // Navigate to events page with event title as query param
+    router.push(`/events?event=${encodeURIComponent(eventTitle)}`);
   };
 
   return (
@@ -655,7 +653,7 @@ export default function HomePage() {
                     <div className="home-event-actions">
                       <button
                         className="home-event-view-details"
-                        onClick={() => handleViewDetails(event.fullDate)}
+                        onClick={() => handleViewDetails(event.title)}
                       >
                         View Event Details <FaChevronRight size={12} />
                       </button>
