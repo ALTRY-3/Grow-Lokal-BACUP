@@ -20,6 +20,17 @@ import {
 import "./events.css";
 import { useSearchParams } from "next/navigation";
 
+// Booking type definition
+type Booking = {
+  eventId: number;
+  eventTitle: string;
+  userName: string;
+  userEmail: string;
+  participants: number;
+  message: string;
+  bookedAt: string;
+};
+
 // Update the Event type definition
 type Event = {
   id: number; // Add this line
@@ -38,6 +49,7 @@ type Event = {
     | "Workshop"
     | "Demo";
   organizer?: string;
+  featuredArtisan?: string; // Featured artisan name for the event
 };
 
 type EventType =
@@ -61,6 +73,7 @@ const events: Event[] = [
       "Annual celebration of local culture featuring artisan booths, traditional performances, and cultural exhibits.",
     type: "Cultural Show",
     organizer: "Olongapo City Tourism Office",
+    featuredArtisan: "Maria Santos",
   },
   {
     id: 2, // Add unique ID
@@ -73,6 +86,7 @@ const events: Event[] = [
       "An art exhibit held at SM City Olongapo Central, showcasing traditional and contemporary artworks by artists from Olongapo, Zambales, and Bataan.",
     type: "Craft Fair",
     organizer: "SM City Olongapo",
+    featuredArtisan: "Juan Dela Cruz",
   },
   {
     id: 3, // Add unique ID
@@ -84,6 +98,7 @@ const events: Event[] = [
     details:
       "A two-day art market at Ayala Malls Harbor Point, offering handmade crafts, original artworks, and unique creations from local artists.",
     type: "Local Market",
+    featuredArtisan: "Rosa Reyes",
   },
   {
     id: 4, // Add unique ID
@@ -95,6 +110,7 @@ const events: Event[] = [
     details:
       "A pottery workshop held at Ianthe, providing participants with hands-on experience in traditional Filipino pottery-making techniques.",
     type: "Workshop",
+    featuredArtisan: "Ana Gonzales",
   },
   {
     id: 5, // Add unique ID
@@ -106,6 +122,7 @@ const events: Event[] = [
     details:
       "An initiative by SM City Olongapo to showcase and celebrate the craftsmanship and artistry of local Filipino artisans.",
     type: "Craft Fair",
+    featuredArtisan: "Miguel Fernandez",
   },
   {
     id: 6, // Add unique ID
@@ -117,6 +134,7 @@ const events: Event[] = [
     details:
       "Olongapo Zambales Artists (OZA) is a creative collective founded in 2022, born from a shared passion to uplift and unify the art community across Olongapo and the province of Zambales.",
     type: "Festival",
+    featuredArtisan: "Carlos Mendoza",
   },
   {
     id: 7, // Add unique ID
@@ -128,6 +146,7 @@ const events: Event[] = [
     details:
       "A creative gathering where artists and art enthusiasts come together to sketch, sip beverages, and engage in artistic conversations, fostering a community of local artists.",
     type: "Workshop",
+    featuredArtisan: "Teresa Villanueva",
   },
   {
     id: 8, // Different ID for second Pottery Demonstration
@@ -139,6 +158,7 @@ const events: Event[] = [
     details:
       "A hands-on pottery demonstration showcasing the art of shaping clay into functional and decorative pieces. Attendees will observe traditional and modern pottery techniques, learn about the tools and processes involved, and gain a deeper appreciation for the craftsmanship behind each creation. Open to artists, students, and the public who wish to explore the beauty of handmade ceramics.",
     type: "Demo",
+    featuredArtisan: "Ramon Cruz",
   },
   {
     id: 9, // Different ID for third event
@@ -150,8 +170,243 @@ const events: Event[] = [
     details:
       "Experience the art of pottery up close in this live demonstration featuring the creative process from clay molding to final design. Participants will witness various shaping and glazing techniques, learn about the cultural roots of pottery, and discover how simple clay can be transformed into timeless works of art. Ideal for anyone curious about craftsmanship and creative expression.",
     type: "Demo",
+    featuredArtisan: "Lucia Mendez",
   },
 ];
+
+// BookingModal Component
+interface BookingModalProps {
+  isOpen: boolean;
+  event: Event | null;
+  onClose: () => void;
+  onSubmit: (booking: Booking) => void;
+}
+
+function BookingModal({ isOpen, event, onClose, onSubmit }: BookingModalProps) {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    participants: 1,
+    message: "",
+  });
+  const [submitted, setSubmitted] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === "participants" ? parseInt(value) || 1 : value,
+    }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!event) return;
+
+    const booking: Booking = {
+      eventId: event.id,
+      eventTitle: event.title,
+      userName: formData.name,
+      userEmail: formData.email,
+      participants: formData.participants,
+      message: formData.message,
+      bookedAt: new Date().toISOString(),
+    };
+
+    onSubmit(booking);
+    setSubmitted(true);
+
+    setTimeout(() => {
+      setFormData({ name: "", email: "", participants: 1, message: "" });
+      setSubmitted(false);
+      onClose();
+    }, 2000);
+  };
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === modalRef.current) {
+      onClose();
+    }
+  };
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !event) return null;
+
+  return (
+    <div
+      className="booking-modal-backdrop"
+      ref={modalRef}
+      onClick={handleBackdropClick}
+    >
+      <div className="booking-modal">
+        <button
+          className="booking-modal-close"
+          onClick={onClose}
+          aria-label="Close booking modal"
+        >
+          <FaTimes />
+        </button>
+
+        {submitted ? (
+          <div className="booking-modal-success">
+            <div className="success-icon">✓</div>
+            <h2>Booking Confirmed!</h2>
+            <p>
+              You're booked for <strong>{event.title}</strong>!
+            </p>
+            <p className="success-subtitle">Check your email for details.</p>
+          </div>
+        ) : (
+          <>
+            <div className="booking-modal-header">
+              <h2>Book Experience</h2>
+              <p className="booking-modal-subtitle">
+                Secure your spot for this amazing event
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="booking-modal-form">
+              {/* Event Info Section (Read-only) */}
+              <div className="booking-form-section">
+                <label className="booking-form-label">Event Title</label>
+                <input
+                  type="text"
+                  value={event.title}
+                  readOnly
+                  className="booking-form-input readonly"
+                />
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">Date</label>
+                <input
+                  type="text"
+                  value={event.dateText}
+                  readOnly
+                  className="booking-form-input readonly"
+                />
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">Time</label>
+                <input
+                  type="text"
+                  value={event.time}
+                  readOnly
+                  className="booking-form-input readonly"
+                />
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">Location</label>
+                <input
+                  type="text"
+                  value={event.location}
+                  readOnly
+                  className="booking-form-input readonly"
+                />
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">Featured Artisan</label>
+                <input
+                  type="text"
+                  value={event.featuredArtisan || "Not specified"}
+                  readOnly
+                  className="booking-form-input readonly"
+                />
+              </div>
+
+              <hr className="booking-form-divider" />
+
+              {/* User Info Section */}
+              <div className="booking-form-section">
+                <label className="booking-form-label">
+                  Your Name <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  placeholder="Enter your full name"
+                  className="booking-form-input"
+                  required
+                />
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">
+                  Email Address <span className="required-asterisk">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  placeholder="your.email@example.com"
+                  className="booking-form-input"
+                  required
+                />
+              </div>
+
+              <div className="booking-form-row">
+                <div className="booking-form-section">
+                  <label className="booking-form-label">
+                    Number of Participants{" "}
+                    <span className="required-asterisk">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    name="participants"
+                    min="1"
+                    max="50"
+                    value={formData.participants}
+                    onChange={handleInputChange}
+                    className="booking-form-input"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="booking-form-section">
+                <label className="booking-form-label">Message (Optional)</label>
+                <textarea
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  placeholder="Any special requests or questions?"
+                  className="booking-form-input booking-form-textarea"
+                  rows={3}
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="booking-modal-submit-btn"
+                disabled={!formData.name || !formData.email}
+              >
+                Confirm Booking
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function EventsPage() {
   const [date, setDate] = useState<Date>(new Date());
@@ -163,8 +418,22 @@ export default function EventsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<EventType | null>(null);
   const [filteredEvents, setFilteredEvents] = useState<Event[]>(events);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [selectedEventForBooking, setSelectedEventForBooking] =
+    useState<Event | null>(null);
+  const [canScrollFeatured, setCanScrollFeatured] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollAllEvents, setCanScrollAllEvents] = useState({
+    left: false,
+    right: true,
+  });
 
   const eventRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const featuredEventsGridRef = useRef<HTMLDivElement | null>(null);
+  const allEventsGridRef = useRef<HTMLDivElement | null>(null);
   const [emphasizedEvent, setEmphasizedEvent] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
@@ -267,6 +536,77 @@ export default function EventsPage() {
     return eventDateTime < today;
   };
 
+  const handleBookingSubmit = (booking: Booking) => {
+    setBookings((prev) => [...prev, booking]);
+    // In a real app, you'd send this to a backend API here
+    console.log("Booking saved:", booking);
+  };
+
+  // Check if an event is already booked
+  const isEventBooked = (eventId: number): boolean => {
+    return bookings.some((booking) => booking.eventId === eventId);
+  };
+
+  const openBookingModal = (event: Event) => {
+    setSelectedEventForBooking(event);
+    setShowBookingModal(true);
+  };
+
+  const closeBookingModal = () => {
+    setShowBookingModal(false);
+    setSelectedEventForBooking(null);
+  };
+
+  const checkScrollPosition = (
+    container: HTMLDivElement | null,
+    setCanScroll: React.Dispatch<
+      React.SetStateAction<{ left: boolean; right: boolean }>
+    >
+  ) => {
+    if (!container) return;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setCanScroll({
+      left: scrollLeft > 0,
+      right: scrollLeft < scrollWidth - clientWidth - 10,
+    });
+  };
+
+  useEffect(() => {
+    // Check initial scroll state on mount
+    setTimeout(() => {
+      checkScrollPosition(featuredEventsGridRef.current, setCanScrollFeatured);
+      checkScrollPosition(allEventsGridRef.current, setCanScrollAllEvents);
+    }, 100);
+
+    // Add scroll listeners
+    const featuredContainer = featuredEventsGridRef.current;
+    const allEventsContainer = allEventsGridRef.current;
+
+    const handleFeaturedScroll = () => {
+      checkScrollPosition(featuredContainer, setCanScrollFeatured);
+    };
+
+    const handleAllEventsScroll = () => {
+      checkScrollPosition(allEventsContainer, setCanScrollAllEvents);
+    };
+
+    if (featuredContainer) {
+      featuredContainer.addEventListener("scroll", handleFeaturedScroll);
+    }
+    if (allEventsContainer) {
+      allEventsContainer.addEventListener("scroll", handleAllEventsScroll);
+    }
+
+    return () => {
+      if (featuredContainer) {
+        featuredContainer.removeEventListener("scroll", handleFeaturedScroll);
+      }
+      if (allEventsContainer) {
+        allEventsContainer.removeEventListener("scroll", handleAllEventsScroll);
+      }
+    };
+  }, []);
+
   return (
     <div className="events-page">
       <Navbar />
@@ -294,22 +634,21 @@ export default function EventsPage() {
           </div>
 
           <div className="featured-events-wrapper">
-            <button
-              className="events-nav-button prev"
-              onClick={() => {
-                const container = document.querySelector(
-                  ".featured-events-grid"
-                );
-                if (container) {
-                  container.scrollLeft -= 650;
-                }
-              }}
-              aria-label="Previous events"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollFeatured.left && (
+              <button
+                className="events-nav-button prev"
+                onClick={() => {
+                  if (featuredEventsGridRef.current) {
+                    featuredEventsGridRef.current.scrollLeft -= 650;
+                  }
+                }}
+                aria-label="Previous events"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
-            <div className="featured-events-grid">
+            <div className="featured-events-grid" ref={featuredEventsGridRef}>
               {featuredEvents.map((event, idx) => (
                 <div className="all-event-card featured" key={event.id}>
                   <div className="all-event-header">
@@ -318,26 +657,38 @@ export default function EventsPage() {
                     >
                       {event.type}
                     </span>
-                    <button
-                      className={`reminder-btn ${
-                        reminders.includes(event.date) ? "active" : ""
-                      }`}
-                      onClick={() =>
-                        !isPastEvent(event.date) && toggleReminder(idx)
-                      }
-                      disabled={isPastEvent(event.date)}
-                      title={
-                        isPastEvent(event.date)
-                          ? "Cannot set reminder for past events"
-                          : "Set reminder"
-                      }
-                    >
-                      {reminders.includes(event.date) ? (
-                        <MdNotificationsActive className="icon-ringing" />
+                    <div className="all-event-actions">
+                      {event.type === "Workshop" || event.type === "Demo" ? (
+                        <button
+                          className="book-experience-btn"
+                          onClick={() => openBookingModal(event)}
+                          title="Book this experience"
+                        >
+                          📅 Book
+                        </button>
                       ) : (
-                        <MdNotifications />
+                        <button
+                          className={`reminder-btn ${
+                            reminders.includes(event.date) ? "active" : ""
+                          }`}
+                          onClick={() =>
+                            !isPastEvent(event.date) && toggleReminder(idx)
+                          }
+                          disabled={isPastEvent(event.date)}
+                          title={
+                            isPastEvent(event.date)
+                              ? "Cannot set reminder for past events"
+                              : "Set reminder"
+                          }
+                        >
+                          {reminders.includes(event.date) ? (
+                            <MdNotificationsActive className="icon-ringing" />
+                          ) : (
+                            <MdNotifications />
+                          )}
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
                   <h3 className="all-event-title">{event.title}</h3>
                   <div className="all-event-meta">
@@ -357,20 +708,19 @@ export default function EventsPage() {
               ))}
             </div>
 
-            <button
-              className="events-nav-button next"
-              onClick={() => {
-                const container = document.querySelector(
-                  ".featured-events-grid"
-                );
-                if (container) {
-                  container.scrollLeft += 650;
-                }
-              }}
-              aria-label="Next events"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollFeatured.right && (
+              <button
+                className="events-nav-button next"
+                onClick={() => {
+                  if (featuredEventsGridRef.current) {
+                    featuredEventsGridRef.current.scrollLeft += 650;
+                  }
+                }}
+                aria-label="Next events"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -437,6 +787,7 @@ export default function EventsPage() {
                 "Cultural Show",
                 "Business Campaign",
                 "Workshop",
+                "Demo",
               ].map((type) => (
                 <button
                   key={type}
@@ -491,31 +842,50 @@ export default function EventsPage() {
                     >
                       {event.type}
                     </span>
-                    <button
-                      className={`reminder-btn ${
-                        reminders.includes(event.date) ? "active" : ""
-                      }`}
-                      onClick={() => {
-                        const eventIndex = events.findIndex(
-                          (e) => e.id === event.id
-                        );
-                        if (!isPastEvent(event.date)) {
-                          toggleReminder(eventIndex);
+                    {event.type === "Workshop" || event.type === "Demo" ? (
+                      <button
+                        className={`book-experience-btn ${
+                          isEventBooked(event.id) ? "booked" : ""
+                        }`}
+                        onClick={() =>
+                          !isEventBooked(event.id) && openBookingModal(event)
                         }
-                      }}
-                      disabled={isPastEvent(event.date)}
-                      title={
-                        isPastEvent(event.date)
-                          ? "Cannot set reminder for past events"
-                          : "Set reminder"
-                      }
-                    >
-                      {reminders.includes(event.date) ? (
-                        <MdNotificationsActive className="icon-ringing" />
-                      ) : (
-                        <MdNotifications />
-                      )}
-                    </button>
+                        disabled={isEventBooked(event.id)}
+                        title={
+                          isEventBooked(event.id)
+                            ? "Already booked"
+                            : "Book this experience"
+                        }
+                      >
+                        {isEventBooked(event.id) ? "✓ Booked" : "📅 Book"}
+                      </button>
+                    ) : (
+                      <button
+                        className={`reminder-btn ${
+                          reminders.includes(event.date) ? "active" : ""
+                        }`}
+                        onClick={() => {
+                          const eventIndex = events.findIndex(
+                            (e) => e.id === event.id
+                          );
+                          if (!isPastEvent(event.date)) {
+                            toggleReminder(eventIndex);
+                          }
+                        }}
+                        disabled={isPastEvent(event.date)}
+                        title={
+                          isPastEvent(event.date)
+                            ? "Cannot set reminder for past events"
+                            : "Set reminder"
+                        }
+                      >
+                        {reminders.includes(event.date) ? (
+                          <MdNotificationsActive className="icon-ringing" />
+                        ) : (
+                          <MdNotifications />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   <h3 className="all-event-title">{event.title}</h3>
@@ -786,6 +1156,13 @@ export default function EventsPage() {
           </aside>
         </div>
       </main>
+
+      <BookingModal
+        isOpen={showBookingModal}
+        event={selectedEventForBooking}
+        onClose={closeBookingModal}
+        onSubmit={handleBookingSubmit}
+      />
 
       <Footer />
     </div>
