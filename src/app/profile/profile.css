@@ -130,7 +130,7 @@
 
 .profile-details-box {
   width: 73rem;
-  border-radius: 5px;
+  border-radius: 5px 5px 0 0;
   background: #2e3f36;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
   margin-top: 16px;
@@ -603,9 +603,6 @@
   color: #FFC46B;
 }
 
-
-/* ...existing code... */
-
 .order-status-msg {
   position: absolute;
   left: 67rem;  /* or left: 20px to move a bit */
@@ -622,6 +619,53 @@
 .order-status-msg.delivered i {
   margin-right: 6px;
   color: #45956a;
+}
+
+.orders-empty-state {
+  padding: 20px 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.orders-empty-icon {
+  font-size: 64px;
+  color: #2e3f36;
+  opacity: 0.5;
+  margin-bottom: 12px;
+}
+
+.orders-empty-title {
+  color: #2e3f36;
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.orders-empty-desc {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.orders-empty-btn {
+  background: #2e3f36;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 32px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(46,63,54,0.12);
+  transition: background 0.2s;
+}
+
+.orders-empty-btn:hover {
+  background: #1c2922;
 }
 
 /* Emphasis styles for region when user needs to fill it first */

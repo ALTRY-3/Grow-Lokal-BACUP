@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import ConfirmDialog from "./ConfirmDialog";
-import "./Navbar.css";
+import styles from "./Navbar.module.css";
 
 export default function Navbar() {
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,10 +43,8 @@ export default function Navbar() {
   // Fetch cart on mount and when session changes
   useEffect(() => {
     if (session?.user) {
-      // User is logged in, fetch their cart
       fetchCart();
     } else {
-      // User is logged out, clear local cart only (don't touch database)
       clearLocalCart();
     }
   }, [session?.user, fetchCart, clearLocalCart]);
@@ -111,14 +109,10 @@ export default function Navbar() {
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
-
-      // Sign out using NextAuth
       await signOut({
         redirect: true,
         callbackUrl: "/login",
       });
-
-      // Clear any local storage items
       localStorage.removeItem("token");
       localStorage.removeItem("user");
     } catch (error) {
@@ -129,68 +123,70 @@ export default function Navbar() {
   };
 
   return (
-    <div className="marketplace-page">
-      <header className="navbar">
-        <div className="left-content">
-          <div className="logo-section">
-            <div className="logo-icon">
+    <div className={styles.marketplacePage}>
+      <header className={styles.navbar}>
+        <div className={styles.leftContent}>
+          <div className={styles.logoSection}>
+            <div className={styles.logoIcon}>
               <img
                 src="/logo.svg"
                 alt="GrowLokal Logo"
-                className="logo-image"
+                className={styles.logoImage}
               />
             </div>
-            <span className="logo-text">GROWLOKAL</span>
+            <span className={styles.logoText}>GROWLOKAL</span>
           </div>
         </div>
 
-        <div className="right-content">
-          <div className="icon-wrapper" ref={notifRef}>
+        <div className={styles.rightContent}>
+          <div className={styles.iconWrapper} ref={notifRef}>
             <FaBell
-              className="nav-icon"
+              className={styles.navIcon}
               onClick={() => setShowNotifications(!showNotifications)}
             />
             {showNotifications && (
-              <div className="dropdown dropdown-notifications">
-                <div className="notification-header">
-                  <h3 className="notification-title">Notifications</h3>
-                  <button className="mark-all-read-btn">
+              <div
+                className={`${styles.dropdown} ${styles.dropdownNotifications}`}
+              >
+                <div className={styles.notificationHeader}>
+                  <h3 className={styles.notificationTitle}>Notifications</h3>
+                  <button className={styles.markAllReadBtn}>
                     Mark all as read
                   </button>
                 </div>
-                <div className="notification-tabs">
+                <div className={styles.notificationTabs}>
                   <button
-                    className={`tab ${
-                      notificationTab === "all" ? "active" : ""
+                    className={`${styles.tab} ${
+                      notificationTab === "all" ? styles.active : ""
                     }`}
                     onClick={() => setNotificationTab("all")}
                   >
                     All
                   </button>
                   <button
-                    className={`tab ${
-                      notificationTab === "orders" ? "active" : ""
+                    className={`${styles.tab} ${
+                      notificationTab === "orders" ? styles.active : ""
                     }`}
                     onClick={() => setNotificationTab("orders")}
                   >
                     Orders
                   </button>
                   <button
-                    className={`tab ${
-                      notificationTab === "messages" ? "active" : ""
+                    className={`${styles.tab} ${
+                      notificationTab === "messages" ? styles.active : ""
                     }`}
                     onClick={() => setNotificationTab("messages")}
                   >
                     Messages
                   </button>
                 </div>
-                <div className="notification-list">
-                  <div className="notification-empty">
-                    <div className="empty-icon">
+                <div className={styles.notificationList}>
+                  <div className={styles.notificationEmpty}>
+                    <div className={styles.emptyIcon}>
                       <FaBell />
                     </div>
-                    <p className="empty-title">No notifications yet</p>
-                    <p className="empty-subtitle">
+                    <p className={styles.emptyTitle}>No notifications yet</p>
+                    <p className={styles.emptySubtitle}>
                       We'll notify you when something arrives
                     </p>
                   </div>
@@ -199,34 +195,34 @@ export default function Navbar() {
             )}
           </div>
 
-          <div className="icon-wrapper" ref={cartRef}>
+          <div className={styles.iconWrapper} ref={cartRef}>
             <FaShoppingCart
-              className="nav-icon"
+              className={styles.navIcon}
               onClick={() => setShowCart(!showCart)}
             />
             {itemCount > 0 && (
-              <span className="cart-badge">
+              <span className={styles.cartBadge}>
                 {itemCount > 99 ? "99+" : itemCount}
               </span>
             )}
             {showCart && (
-              <div className="dropdown dropdown-cart">
-                <div className="cart-header">
-                  <h3 className="cart-title">Shopping Cart</h3>
-                  <span className="cart-count">{itemCount} items</span>
+              <div className={`${styles.dropdown} ${styles.dropdownCart}`}>
+                <div className={styles.cartHeader}>
+                  <h3 className={styles.cartTitle}>Shopping Cart</h3>
+                  <span className={styles.cartCount}>{itemCount} items</span>
                 </div>
 
                 {items.length === 0 ? (
-                  <div className="empty-cart-container">
-                    <div className="empty-cart-icon">
+                  <div className={styles.emptyCartContainer}>
+                    <div className={styles.emptyCartIcon}>
                       <FaShoppingCart />
                     </div>
-                    <p className="empty-cart-title">Your cart is empty</p>
-                    <p className="empty-cart-subtitle">
+                    <p className={styles.emptyCartTitle}>Your cart is empty</p>
+                    <p className={styles.emptyCartSubtitle}>
                       Add items to get started
                     </p>
                     <button
-                      className="btn-browse"
+                      className={styles.btnBrowse}
                       onClick={() => {
                         setShowCart(false);
                         router.push("/marketplace");
@@ -237,37 +233,42 @@ export default function Navbar() {
                   </div>
                 ) : (
                   <>
-                    <div className="cart-items-list">
+                    <div className={styles.cartItemsList}>
                       {items.map((item) => (
-                        <div key={item.productId} className="cart-item-card">
-                          <div className="cart-item-image-wrapper">
+                        <div
+                          key={item.productId}
+                          className={styles.cartItemCard}
+                        >
+                          <div className={styles.cartItemImageWrapper}>
                             <img
                               src={item.image}
                               alt={item.name}
-                              className="cart-item-image"
+                              className={styles.cartItemImage}
                             />
-                            <span className="cart-item-quantity-badge">
+                            <span className={styles.cartItemQuantityBadge}>
                               {item.quantity}
                             </span>
                           </div>
-                          <div className="cart-item-details">
-                            <p className="cart-item-name">{item.name}</p>
-                            <div className="cart-item-meta">
-                              <span className="cart-item-price">
+                          <div className={styles.cartItemDetails}>
+                            <p className={styles.cartItemName}>{item.name}</p>
+                            <div className={styles.cartItemMeta}>
+                              <span className={styles.cartItemPrice}>
                                 ₱{item.price.toFixed(2)}
                               </span>
-                              <span className="cart-item-separator">×</span>
-                              <span className="cart-item-qty">
+                              <span className={styles.cartItemSeparator}>
+                                ×
+                              </span>
+                              <span className={styles.cartItemQty}>
                                 {item.quantity}
                               </span>
                             </div>
-                            <p className="cart-item-total">
+                            <p className={styles.cartItemTotal}>
                               ₱{(item.price * item.quantity).toFixed(2)}
                             </p>
                           </div>
                           <button
                             onClick={() => removeItem(item.productId)}
-                            className="cart-item-remove-btn"
+                            className={styles.cartItemRemoveBtn}
                             title="Remove item"
                           >
                             <FaTrash />
@@ -276,28 +277,34 @@ export default function Navbar() {
                       ))}
                     </div>
 
-                    <div className="cart-summary">
-                      <div className="summary-row">
-                        <span className="summary-label">Subtotal</span>
-                        <span className="summary-value">
+                    <div className={styles.cartSummary}>
+                      <div className={styles.summaryRow}>
+                        <span className={styles.summaryLabel}>Subtotal</span>
+                        <span className={styles.summaryValue}>
                           ₱{subtotal.toFixed(2)}
                         </span>
                       </div>
-                      <div className="summary-row">
-                        <span className="summary-label">Shipping</span>
-                        <span className="summary-value text-free">FREE</span>
+                      <div className={styles.summaryRow}>
+                        <span className={styles.summaryLabel}>Shipping</span>
+                        <span
+                          className={`${styles.summaryValue} ${styles.textFree}`}
+                        >
+                          FREE
+                        </span>
                       </div>
-                      <div className="summary-row summary-total">
-                        <span className="summary-label">Total</span>
-                        <span className="summary-value">
+                      <div
+                        className={`${styles.summaryRow} ${styles.summaryTotal}`}
+                      >
+                        <span className={styles.summaryLabel}>Total</span>
+                        <span className={styles.summaryValue}>
                           ₱{subtotal.toFixed(2)}
                         </span>
                       </div>
                     </div>
 
-                    <div className="cart-actions">
+                    <div className={styles.cartActions}>
                       <button
-                        className="btn-secondary"
+                        className={styles.btnSecondary}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -308,7 +315,7 @@ export default function Navbar() {
                         View Full Cart
                       </button>
                       <button
-                        className="btn-primary"
+                        className={styles.btnPrimary}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -327,15 +334,15 @@ export default function Navbar() {
             )}
           </div>
 
-          <div className="icon-wrapper" ref={profileRef}>
+          <div className={styles.iconWrapper} ref={profileRef}>
             <FaUserCircle
-              className="nav-icon"
+              className={styles.navIcon}
               onClick={() => setShowProfile(!showProfile)}
             />
             {showProfile && (
-              <div className="dropdown dropdown-profile">
-                <div className="profile-user-section">
-                  <div className="profile-avatar">
+              <div className={`${styles.dropdown} ${styles.dropdownProfile}`}>
+                <div className={styles.profileUserSection}>
+                  <div className={styles.profileAvatar}>
                     <img
                       src={userProfilePic}
                       alt="Profile"
@@ -345,60 +352,60 @@ export default function Navbar() {
                       }}
                     />
                   </div>
-                  <div className="profile-user-info">
-                    <p className="profile-user-name">
+                  <div className={styles.profileUserInfo}>
+                    <p className={styles.profileUserName}>
                       {session?.user?.name || "User"}
                     </p>
-                    <p className="profile-user-email">
+                    <p className={styles.profileUserEmail}>
                       {session?.user?.email || ""}
                     </p>
                   </div>
                 </div>
 
-                <nav className="profile-menu-nav">
+                <nav className={styles.profileMenuNav}>
                   <button
-                    className="profile-menu-item"
+                    className={styles.profileMenuItem}
                     onClick={() => {
                       setShowProfile(false);
-                      router.push("/profile");
+                      router.push("/profile?section=profile");
                     }}
                   >
-                    <FaUser className="menu-icon" />
-                    <span className="menu-text">My Account</span>
-                    <FaChevronRight className="menu-arrow" />
+                    <FaUser className={styles.menuIcon} />
+                    <span className={styles.menuText}>My Account</span>
+                    <FaChevronRight className={styles.menuArrow} />
                   </button>
 
                   <button
-                    className="profile-menu-item"
+                    className={styles.profileMenuItem}
                     onClick={() => {
                       setShowProfile(false);
-                      router.push("/orders");
+                      router.push("/profile?section=orders");
                     }}
                   >
-                    <FaShoppingBag className="menu-icon" />
-                    <span className="menu-text">My Orders</span>
-                    <FaChevronRight className="menu-arrow" />
+                    <FaShoppingBag className={styles.menuIcon} />
+                    <span className={styles.menuText}>My Orders</span>
+                    <FaChevronRight className={styles.menuArrow} />
                   </button>
 
                   <button
-                    className="profile-menu-item"
+                    className={styles.profileMenuItem}
                     onClick={() => {
                       setShowProfile(false);
-                      router.push("/wishlist");
+                      router.push("/profile?section=wishlist");
                     }}
                   >
-                    <FaHeart className="menu-icon" />
-                    <span className="menu-text">Wishlist</span>
-                    <FaChevronRight className="menu-arrow" />
+                    <FaHeart className={styles.menuIcon} />
+                    <span className={styles.menuText}>Wishlist</span>
+                    <FaChevronRight className={styles.menuArrow} />
                   </button>
                 </nav>
 
-                <div className="profile-logout-section">
+                <div className={styles.profileLogoutSection}>
                   <button
-                    className="profile-logout-btn"
+                    className={styles.profileLogoutBtn}
                     onClick={handleLogoutClick}
                   >
-                    <FaSignOutAlt className="logout-icon" />
+                    <FaSignOutAlt className={styles.logoutIcon} />
                     <span>Logout</span>
                   </button>
                 </div>
@@ -408,8 +415,8 @@ export default function Navbar() {
         </div>
       </header>
 
-      <nav className="sub-navbar">
-        <ul className="sub-nav-links">
+      <nav className={styles.subNavbar}>
+        <ul className={styles.subNavLinks}>
           <li>
             <Link href="/home">Home</Link>
           </li>
@@ -428,11 +435,11 @@ export default function Navbar() {
         </ul>
       </nav>
 
-      <div className="nav-strip">
+      <div className={styles.navStrip}>
         <img
           src="/left-panel.svg"
           alt="Decorative strip"
-          className="nav-strip-image"
+          className={styles.navStripImage}
         />
       </div>
 

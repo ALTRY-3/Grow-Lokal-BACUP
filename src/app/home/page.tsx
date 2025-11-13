@@ -5,6 +5,7 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ImageCarousel from "@/components/ImageCarousel1";
+import ProductModal from "@/components/ProductModal"; // Add this import
 import { FaStar } from "react-icons/fa";
 import { MapPin } from "lucide-react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -32,8 +33,8 @@ const featuredProducts = [
     name: "Rice Grooved Kuksa Mug",
     price: 449,
     artist: "Ben Yap",
-    category: "Woodwork",
-    craftType: "Cooking",
+    category: "Handicrafts",
+    craftType: "Woodwork",
     barangay: "Banicain",
     image: "/home6.png",
   },
@@ -51,10 +52,10 @@ const featuredProducts = [
     id: 4,
     name: "Hardin Beaded Earrings",
     price: 499,
-    artist: "Lei Cruz",
+    artist: "Frances Toyang",
     category: "Handicrafts",
     craftType: "Jewelry Making",
-    barangay: "West Tapinac",
+    barangay: "Kalaklan",
     image: "/box6.png",
   },
   {
@@ -71,10 +72,10 @@ const featuredProducts = [
     id: 6,
     name: "Handwoven Buri Bag",
     price: 79,
-    artist: "LENG",
+    artist: "Aba Dela Cruz",
     category: "Handicrafts",
-    craftType: "Basketry",
-    barangay: "Mabayuan",
+    craftType: "Weaving",
+    barangay: "Asinan",
     image: "/box7.png",
   },
 ];
@@ -200,16 +201,16 @@ const upcomingEvents = [
   {
     title: "Pottery Demonstration",
     type: "Demo",
-    date: "March 20, 2025",
+    date: "March 20, 2026",
     location: "Olongapo City, Triangle",
-    fullDate: "2025-03-20",
+    fullDate: "2026-03-20",
   },
   {
     title: "Cultural Festival",
     type: "Festival",
-    date: "March 25, 2025",
-    location: "Magsaysay",
-    fullDate: "2025-03-25",
+    date: "March 25, 2026",
+    location: "Magsaysay Drive, Olongapo City",
+    fullDate: "2026-03-25",
   },
   {
     title: "Sip and Sketch 'Gapo",
@@ -272,50 +273,73 @@ const artisanStories = [
   {
     id: "1",
     title: "A Journey to the Home of Rattan Furniture Making",
-    artistName: "Fiona Gavino",
+    artistName: "Aba Dela Cruz",
     story:
       "Rattan is a strong part of Filipino cultural material tradition and Cebu is known through out the Philippines for its strong tradition in rattan furniture making. During my residency I visited Cebu to learn about both the traditional and innovative techniques furniture makers use. The techniques I learnt there gave me a strong understanding of frame making and weaving and it was with this knowledge that I returned to my studio in Manila. There I  began to experiment with rattan frame making and applying it to sculptural forms and concepts working towards an exhibition that was to be held at the end of my residency.",
     image: "/artisans4.jpeg",
   },
   {
     id: "2",
-    title: "Artist 2 Story",
-    artistName: "MANG BEN",
+    title: "Grain of Time",
+    artistName: "Ben Yap",
     story:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-    image: "/artisans3.jpg",
+      "Each piece of wood I touch holds a memory, of rain, of sun, of silence. When I carve, I listen to its rhythm, the pulse hidden beneath its grain. The sound of the chisel against the wood reminds me that even something once cut down can be shaped into something new. Every curve I sand feels like rewriting a story that refuses to end.",
+    image: "/artisans4.jpg",
   },
   {
     id: "3",
-    title: "Artist 3 Story",
-    artistName: "CARLA",
+    title: "In the Shape of My Hands",
+    artistName: "Carla Abdul",
     story:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-    image: "/artisans2.jpg",
-  },
-  {
-    id: "4",
-    title: "Artist 4 Story",
-    artistName: "DAVID",
-    story:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+      "The clay never lies. It remembers every hesitation, every moment I lose focus. When I sit at the wheel, it feels like time folds in on itself — just me, the slow spin, and the soft resistance beneath my palms.",
     image: "/artisans1.jpg",
   },
   {
-    id: "5",
-    title: "Artist 4 Story",
-    artistName: "DAVID",
+    id: "4",
+    title: "Threads of Quiet",
+    artistName: "David Delo Santos",
     story:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-    image: "/artist4.png",
+      "Each stitch feels like a whisper, a small act of patience that holds the fabric together. I lose track of time as colors bloom beneath my fingers, stories forming where there were once only blank spaces. When I finish, it’s never just a pattern — it’s a piece of calm I’ve sewn into being.",
+    image: "/artisans5.jpg",
+  },
+  {
+    id: "5",
+    title: "Beads and Beauty",
+    artistName: "Frances Toyang",
+    story:
+      "Tiny beads slip through my fingers like drops of light, each one holding a fragment of color and meaning. I thread them together slowly, finding rhythm in the quiet click of glass against glass. When the piece catches the sun, I see more than jewelry — I see patience turned into beauty.",
+    image: "/artisans6.jpg",
   },
 ];
 
 export default function HomePage() {
   const [eventReminders, setEventReminders] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null); // Change this
+  const [wishlist, setWishlist] = useState<Set<string>>(new Set()); // Add wishlist state
   const router = useRouter();
+
+  // Add state to track scroll positions for each carousel
+  const [canScrollFeatured, setCanScrollFeatured] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollArtisans, setCanScrollArtisans] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollEvents, setCanScrollEvents] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollStories, setCanScrollStories] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollAnnouncements, setCanScrollAnnouncements] = useState({
+    left: false,
+    right: true,
+  });
 
   useEffect(() => {
     const savedReminders = localStorage.getItem("eventReminders");
@@ -332,6 +356,14 @@ export default function HomePage() {
       setSelectedProduct(JSON.parse(selectedProductFromHome));
       // Clear the stored product
       localStorage.removeItem("selectedProduct");
+    }
+  }, []);
+
+  // Load wishlist from localStorage
+  useEffect(() => {
+    const savedWishlist = localStorage.getItem("wishlist");
+    if (savedWishlist) {
+      setWishlist(new Set(JSON.parse(savedWishlist)));
     }
   }, []);
 
@@ -384,32 +416,104 @@ export default function HomePage() {
   }, [openMenuId]);
 
   const handleProductClick = (product: any) => {
-    // Store the product details in localStorage
-    localStorage.setItem(
-      "selectedProduct",
-      JSON.stringify({
-        img: product.image,
-        hoverImg: product.image,
-        name: product.name,
-        artist: product.artist,
-        price: `₱${product.price.toFixed(2)}`,
-        craftType: product.craftType,
-        category: product.category,
-        productId: product.id.toString(),
-        maxStock: 10, // You can adjust this as needed
-      })
-    );
-
-    // Navigate to marketplace
-    router.push("/marketplace");
+    // Convert product to modal format
+    const modalProduct = {
+      img: product.image,
+      hoverImg: product.image,
+      name: product.name,
+      artist: product.artist,
+      price: `₱${product.price.toFixed(2)}`,
+      craftType: product.craftType,
+      category: product.category,
+      productId: product.id.toString(),
+      maxStock: 10,
+      soldCount: 0,
+    };
+    setSelectedProduct(modalProduct);
   };
 
-  const handleViewDetails = (eventDate: string) => {
-    // Store the selected date in localStorage
-    localStorage.setItem("selectedEventDate", eventDate);
-    // Navigate to events page
-    router.push("/events");
+  const toggleWishlist = (productId: string) => {
+    setWishlist((prev) => {
+      const newWishlist = new Set(prev);
+      if (newWishlist.has(productId)) {
+        newWishlist.delete(productId);
+      } else {
+        newWishlist.add(productId);
+      }
+      localStorage.setItem("wishlist", JSON.stringify(Array.from(newWishlist)));
+      return newWishlist;
+    });
   };
+
+  const handleViewDetails = (eventTitle: string) => {
+    // Navigate to events page with event title as query param
+    router.push(`/events?event=${encodeURIComponent(eventTitle)}`);
+  };
+
+  const checkScrollPosition = (
+    container: HTMLDivElement | null,
+    setCanScroll: React.Dispatch<
+      React.SetStateAction<{ left: boolean; right: boolean }>
+    >
+  ) => {
+    if (!container) return;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setCanScroll({
+      left: scrollLeft > 0,
+      right: scrollLeft < scrollWidth - clientWidth - 10,
+    });
+  };
+
+  // Add scroll event listeners
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        checkScrollPosition(featuredRef.current, setCanScrollFeatured);
+        checkScrollPosition(artisansRef.current, setCanScrollArtisans);
+        checkScrollPosition(eventsRef.current, setCanScrollEvents);
+        checkScrollPosition(storiesRef.current, setCanScrollStories);
+        checkScrollPosition(
+          announcementsRef.current,
+          setCanScrollAnnouncements
+        );
+      }, 100);
+    };
+
+    const containers = [
+      featuredRef.current,
+      artisansRef.current,
+      eventsRef.current,
+      storiesRef.current,
+      announcementsRef.current,
+    ];
+
+    containers.forEach((container) => {
+      if (container) {
+        container.addEventListener("scroll", handleScroll);
+      }
+    });
+
+    // Check initial state
+    setTimeout(() => {
+      checkScrollPosition(featuredRef.current, setCanScrollFeatured);
+      checkScrollPosition(artisansRef.current, setCanScrollArtisans);
+      checkScrollPosition(eventsRef.current, setCanScrollEvents);
+      checkScrollPosition(storiesRef.current, setCanScrollStories);
+      checkScrollPosition(announcementsRef.current, setCanScrollAnnouncements);
+    }, 500);
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      containers.forEach((container) => {
+        if (container) {
+          container.removeEventListener("scroll", handleScroll);
+        }
+      });
+    };
+  }, []); // Empty dependency array - runs only once on mount
 
   return (
     <div className="homepage">
@@ -448,13 +552,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", artisansRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollArtisans.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", artisansRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-artisan-carousel" ref={artisansRef}>
               {topArtisans.map((artisan) => (
@@ -522,13 +628,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", artisansRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollArtisans.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", artisansRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -542,13 +650,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", featuredRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollFeatured.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", featuredRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-product-carousel" ref={featuredRef}>
               {featuredProducts.map((product) => (
@@ -594,13 +704,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", featuredRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollFeatured.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", featuredRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -614,13 +726,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", eventsRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollEvents.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", eventsRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-event-carousel" ref={eventsRef}>
               {upcomingEvents.map((event, index) => (
@@ -655,7 +769,7 @@ export default function HomePage() {
                     <div className="home-event-actions">
                       <button
                         className="home-event-view-details"
-                        onClick={() => handleViewDetails(event.fullDate)}
+                        onClick={() => handleViewDetails(event.title)}
                       >
                         View Event Details <FaChevronRight size={12} />
                       </button>
@@ -665,13 +779,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", eventsRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollEvents.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", eventsRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -685,13 +801,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", storiesRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollStories.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", storiesRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-stories-carousel" ref={storiesRef}>
               {artisanStories.map((story) => (
@@ -712,7 +830,7 @@ export default function HomePage() {
                         : story.story}
                     </p>
                     <Link
-                      href={`/artiststory/${story.id}`}
+                      href={`/stories?storyId=${story.id}`}
                       className="home-story-read-more"
                     >
                       Read More
@@ -722,13 +840,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", storiesRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollStories.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", storiesRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -742,13 +862,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", announcementsRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollAnnouncements.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", announcementsRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-announcement-carousel" ref={announcementsRef}>
               {announcements.map((announcement, index) => (
@@ -770,13 +892,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", announcementsRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollAnnouncements.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", announcementsRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -797,6 +921,27 @@ export default function HomePage() {
       </main>
 
       <Footer />
+
+      {/* Add ProductModal */}
+      {selectedProduct && (
+        <ProductModal
+          product={selectedProduct}
+          onClose={() => setSelectedProduct(null)}
+          isInWishlist={
+            selectedProduct.productId
+              ? wishlist.has(selectedProduct.productId)
+              : false
+          }
+          onToggleWishlist={
+            selectedProduct.productId
+              ? () => toggleWishlist(selectedProduct.productId)
+              : undefined
+          }
+          onProductChange={(newProduct) => {
+            setSelectedProduct(newProduct);
+          }}
+        />
+      )}
     </div>
   );
 }
