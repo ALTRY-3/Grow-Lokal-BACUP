@@ -317,6 +317,28 @@ export default function HomePage() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const router = useRouter();
 
+  // Add state to track scroll positions for each carousel
+  const [canScrollFeatured, setCanScrollFeatured] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollArtisans, setCanScrollArtisans] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollEvents, setCanScrollEvents] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollStories, setCanScrollStories] = useState({
+    left: false,
+    right: true,
+  });
+  const [canScrollAnnouncements, setCanScrollAnnouncements] = useState({
+    left: false,
+    right: true,
+  });
+
   useEffect(() => {
     const savedReminders = localStorage.getItem("eventReminders");
     if (savedReminders) {
@@ -409,6 +431,71 @@ export default function HomePage() {
     router.push(`/events?event=${encodeURIComponent(eventTitle)}`);
   };
 
+  const checkScrollPosition = (
+    container: HTMLDivElement | null,
+    setCanScroll: React.Dispatch<
+      React.SetStateAction<{ left: boolean; right: boolean }>
+    >
+  ) => {
+    if (!container) return;
+    const { scrollLeft, scrollWidth, clientWidth } = container;
+    setCanScroll({
+      left: scrollLeft > 0,
+      right: scrollLeft < scrollWidth - clientWidth - 10,
+    });
+  };
+
+  // Add scroll event listeners
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+
+    const handleScroll = () => {
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        checkScrollPosition(featuredRef.current, setCanScrollFeatured);
+        checkScrollPosition(artisansRef.current, setCanScrollArtisans);
+        checkScrollPosition(eventsRef.current, setCanScrollEvents);
+        checkScrollPosition(storiesRef.current, setCanScrollStories);
+        checkScrollPosition(
+          announcementsRef.current,
+          setCanScrollAnnouncements
+        );
+      }, 100);
+    };
+
+    const containers = [
+      featuredRef.current,
+      artisansRef.current,
+      eventsRef.current,
+      storiesRef.current,
+      announcementsRef.current,
+    ];
+
+    containers.forEach((container) => {
+      if (container) {
+        container.addEventListener("scroll", handleScroll);
+      }
+    });
+
+    // Check initial state
+    setTimeout(() => {
+      checkScrollPosition(featuredRef.current, setCanScrollFeatured);
+      checkScrollPosition(artisansRef.current, setCanScrollArtisans);
+      checkScrollPosition(eventsRef.current, setCanScrollEvents);
+      checkScrollPosition(storiesRef.current, setCanScrollStories);
+      checkScrollPosition(announcementsRef.current, setCanScrollAnnouncements);
+    }, 500);
+
+    return () => {
+      clearTimeout(scrollTimeout);
+      containers.forEach((container) => {
+        if (container) {
+          container.removeEventListener("scroll", handleScroll);
+        }
+      });
+    };
+  }, []); // Empty dependency array - runs only once on mount
+
   return (
     <div className="homepage">
       <Navbar />
@@ -446,13 +533,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", artisansRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollArtisans.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", artisansRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-artisan-carousel" ref={artisansRef}>
               {topArtisans.map((artisan) => (
@@ -520,13 +609,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", artisansRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollArtisans.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", artisansRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -540,13 +631,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", featuredRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollFeatured.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", featuredRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-product-carousel" ref={featuredRef}>
               {featuredProducts.map((product) => (
@@ -592,13 +685,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", featuredRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollFeatured.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", featuredRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -612,13 +707,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", eventsRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollEvents.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", eventsRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-event-carousel" ref={eventsRef}>
               {upcomingEvents.map((event, index) => (
@@ -663,13 +760,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", eventsRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollEvents.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", eventsRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -683,13 +782,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", storiesRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollStories.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", storiesRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-stories-carousel" ref={storiesRef}>
               {artisanStories.map((story) => (
@@ -720,13 +821,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", storiesRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollStories.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", storiesRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
@@ -740,13 +843,15 @@ export default function HomePage() {
           </div>
 
           <div className="carousel-container">
-            <button
-              className="home-nav-button prev"
-              onClick={() => scroll("left", announcementsRef.current)}
-              aria-label="Previous"
-            >
-              <FaChevronLeft />
-            </button>
+            {canScrollAnnouncements.left && (
+              <button
+                className="home-nav-button prev"
+                onClick={() => scroll("left", announcementsRef.current)}
+                aria-label="Previous"
+              >
+                <FaChevronLeft />
+              </button>
+            )}
 
             <div className="home-announcement-carousel" ref={announcementsRef}>
               {announcements.map((announcement, index) => (
@@ -768,13 +873,15 @@ export default function HomePage() {
               ))}
             </div>
 
-            <button
-              className="home-nav-button next"
-              onClick={() => scroll("right", announcementsRef.current)}
-              aria-label="Next"
-            >
-              <FaChevronRight />
-            </button>
+            {canScrollAnnouncements.right && (
+              <button
+                className="home-nav-button next"
+                onClick={() => scroll("right", announcementsRef.current)}
+                aria-label="Next"
+              >
+                <FaChevronRight />
+              </button>
+            )}
           </div>
         </section>
 
