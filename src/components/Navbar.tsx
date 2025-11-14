@@ -11,9 +11,10 @@ import {
   FaSignOutAlt,
   FaChevronRight,
   FaTrash,
+  FaBars,
 } from "react-icons/fa";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useCartStore } from "@/store/cartStore";
 import ConfirmDialog from "./ConfirmDialog";
@@ -25,6 +26,7 @@ export default function Navbar() {
   const [showCart, setShowCart] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [notificationTab, setNotificationTab] = useState<
     "all" | "orders" | "messages"
   >("all");
@@ -34,11 +36,30 @@ export default function Navbar() {
 
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { items, subtotal, itemCount, fetchCart, removeItem, clearLocalCart } =
     useCartStore();
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const cartRef = useRef<HTMLDivElement>(null);
+
+  // Get page name from pathname
+  const getPageName = () => {
+    const pathSegment = pathname.split("/")[1] || "home";
+    const pageNames: Record<string, string> = {
+      home: "Home",
+      marketplace: "Marketplace",
+      stories: "Stories",
+      events: "Events",
+      map: "Map",
+      profile: "Profile",
+      cart: "Cart",
+      checkout: "Checkout",
+      "add-product": "Add Product",
+      analytics: "Analytics",
+    };
+    return pageNames[pathSegment] || "Menu";
+  };
 
   // Fetch cart on mount and when session changes
   useEffect(() => {
@@ -416,7 +437,17 @@ export default function Navbar() {
       </header>
 
       <nav className={styles.subNavbar}>
-        <ul className={styles.subNavLinks}>
+        {/* Mobile menu toggle */}
+        <button
+          className={styles.mobileMenuToggle}
+          onClick={() => setShowMobileMenu(!showMobileMenu)}
+          aria-label="Toggle navigation menu"
+        >
+          <FaBars className={styles.menuToggleIcon} />
+        </button>
+
+        {/* Desktop navigation - always visible on desktop */}
+        <ul className={`${styles.subNavLinks} ${styles.desktopNav}`}>
           <li>
             <Link href="/home">Home</Link>
           </li>
@@ -433,6 +464,40 @@ export default function Navbar() {
             <Link href="/map">Map</Link>
           </li>
         </ul>
+
+        {/* Mobile dropdown navigation */}
+        {showMobileMenu && (
+          <ul className={`${styles.subNavLinks} ${styles.mobileNav}`}>
+            <li>
+              <Link href="/home" onClick={() => setShowMobileMenu(false)}>
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/marketplace"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                Marketplace
+              </Link>
+            </li>
+            <li>
+              <Link href="/stories" onClick={() => setShowMobileMenu(false)}>
+                Stories
+              </Link>
+            </li>
+            <li>
+              <Link href="/events" onClick={() => setShowMobileMenu(false)}>
+                Events
+              </Link>
+            </li>
+            <li>
+              <Link href="/map" onClick={() => setShowMobileMenu(false)}>
+                Map
+              </Link>
+            </li>
+          </ul>
+        )}
       </nav>
 
       <div className={styles.navStrip}>

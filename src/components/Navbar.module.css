@@ -55,6 +55,10 @@
 
 .marketplacePage {
   width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background-color: var(--primary-green);
 }
 
 .navbar {
@@ -127,7 +131,10 @@
   background-color: var(--primary-gold);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  box-shadow: var(--shadow-sm);
 }
 
 .subNavLinks {
@@ -830,7 +837,32 @@
 }
 
 /* ========== RESPONSIVE DESIGN ========== */
+
+/* Hide GROWLOKAL text on mobile (below 768px) */
 @media (max-width: 768px) {
+  .logoText {
+    display: none;
+  }
+
+  .navbar {
+    padding: 0 1rem;
+  }
+
+  /* Make icons smaller on mobile */
+  .navIcon {
+    font-size: 1.25rem;
+  }
+
+  .rightContent {
+    gap: 1rem;
+  }
+
+  .cartBadge {
+    width: 18px;
+    height: 18px;
+    font-size: 0.65rem;
+  }
+  
   .dropdownNotifications {
     width: calc(100vw - 32px);
     max-width: 380px;
@@ -873,7 +905,25 @@
   }
 }
 
+/* Extra small mobile adjustments */
 @media (max-width: 480px) {
+  .navbar {
+    padding: 0 0.75rem;
+  }
+
+  .logoImage {
+    width: 35px;
+    height: 35px;
+  }
+
+  .navIcon {
+    font-size: 1.15rem;
+  }
+
+  .rightContent {
+    gap: 0.75rem;
+  }
+
   .cartActions {
     flex-direction: column;
   }
@@ -890,5 +940,151 @@
   .cartItemImage {
     width: 50px;
     height: 50px;
+  }
+}
+
+/* Mobile Menu Toggle Button */
+.mobileMenuToggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: auto;
+  max-width: none;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  font-weight: var(--font-medium);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.3s ease;
+}
+
+.mobileMenuToggle:hover {
+  background: transparent;
+  border-radius: var(--radius-md);
+}
+
+.menuToggleText {
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+  text-align: left;
+  flex: none;
+}
+
+.menuToggleIcon {
+  font-size: 1.2rem;
+  transition: transform 0.3s ease;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 0;
+  flex-shrink: 0;
+  width: 20px;
+  height: 16px;
+}
+
+.menuToggleIcon::before,
+.menuToggleIcon::after {
+  content: '';
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+.menuToggleIcon {
+  position: relative;
+}
+
+.menuToggleIcon span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: white;
+  transition: all 0.3s ease;
+}
+
+.menuToggleIconOpen {
+  transform: none;
+}
+
+/* Desktop navigation - visible by default */
+.desktopNav {
+  display: flex;
+}
+
+/* Mobile navigation dropdown */
+.mobileNav {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--primary-gold);
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: var(--shadow-lg);
+  animation: slideDown 0.3s ease-out;
+  z-index: 999;
+}
+
+.mobileNav li {
+  width: 100%;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mobileNav li:last-child {
+  border-bottom: none;
+}
+
+.mobileNav li a {
+  display: block;
+  padding: 1rem 1.5rem;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.mobileNav li a:hover {
+  background: rgba(255, 255, 255, 0.1);
+  padding-left: 2rem;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Show mobile menu toggle on tablets and mobile */
+@media (max-width: 1024px) {
+  .subNavbar {
+    position: relative;
+  }
+
+  .mobileMenuToggle {
+    display: flex;
+  }
+
+  .desktopNav {
+    display: none;
+  }
+
+  .mobileNav {
+    display: flex;
+  }
+
+  .subNavLinks {
+    gap: 0;
   }
 }
