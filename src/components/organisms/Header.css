@@ -1,0 +1,90 @@
+/* Header Organism Styles */
+
+.atomic-header {
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.atomic-header__container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.atomic-header__logo {
+  flex-shrink: 0;
+}
+
+.atomic-header__logo-img {
+  height: 50px;
+  width: auto;
+}
+
+.atomic-header__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.atomic-header__nav {
+  display: flex;
+  gap: 2rem;
+  margin-left: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atomic-header__nav-link {
+  color: #6b7280;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+
+  &:hover {
+    color: #007bff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #007bff;
+    outline-offset: 4px;
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .atomic-header__container {
+    padding: 0.75rem 1rem;
+    gap: 1rem;
+  }
+
+  .atomic-header__nav {
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .atomic-header__container {
+    flex-wrap: wrap;
+  }
+
+  .atomic-header__title {
+    font-size: 1.25rem;
+  }
+
+  .atomic-header__nav {
+    order: 3;
+    width: 100%;
+    flex-direction: column;
+    margin-left: 0;
+    gap: 0.5rem;
+  }
+}

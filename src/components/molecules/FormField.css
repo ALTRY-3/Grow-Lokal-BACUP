@@ -1,0 +1,33 @@
+/* FormField Molecule Styles */
+
+.atomic-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.atomic-form-field__label {
+  margin-bottom: 0.25rem;
+}
+
+.atomic-form-field__input {
+  width: 100%;
+}
+
+.atomic-form-field__help {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-top: 0.25rem;
+}
+
+.atomic-form-field:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .atomic-form-field {
+    margin-bottom: 1rem;
+  }
+}

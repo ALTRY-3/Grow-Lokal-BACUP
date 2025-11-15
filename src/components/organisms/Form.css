@@ -1,0 +1,35 @@
+/* Form Organism Styles */
+
+.atomic-form {
+  max-width: 600px;
+}
+
+.atomic-form__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 1.5rem 0;
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 1rem;
+}
+
+.atomic-form__content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.atomic-form__submit {
+  margin-top: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .atomic-form {
+    max-width: 100%;
+  }
+
+  .atomic-form__title {
+    font-size: 1.25rem;
+  }
+}
