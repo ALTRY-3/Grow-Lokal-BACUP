@@ -7,6 +7,7 @@ import Image from "next/image";
 import { signIn, useSession } from "next-auth/react";
 import ImageCarousel from "@/components/ImageCarousel";
 import PasswordStrengthMeter from "@/components/PasswordStrengthMeter";
+import { Button, Input } from "@/components/atoms";
 import { useRecaptcha } from "@/lib/useRecaptcha";
 import { useCsrfToken, getCsrfHeaders } from "@/lib/useCsrfToken";
 import { getFriendlyErrorMessage } from "@/lib/authErrors";
@@ -28,12 +29,15 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [devVerificationLink, setDevVerificationLink] = useState<string | null>(null);
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
+  const [devVerificationLink, setDevVerificationLink] = useState<string | null>(
+    null
+  );
+  const [passwordStrength, setPasswordStrength] =
+    useState<PasswordStrength | null>(null);
   const [isPasswordBreached, setIsPasswordBreached] = useState(false);
   const [socialLoading, setSocialLoading] = useState<string | null>(null);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-  
+
   const { getToken, error: recaptchaError } = useRecaptcha();
   const { csrfToken, loading: csrfLoading } = useCsrfToken();
   const router = useRouter();
@@ -49,7 +53,7 @@ export default function SignupPage() {
 
   // Check for OAuth errors in URL
   useEffect(() => {
-    const urlError = searchParams?.get('error');
+    const urlError = searchParams?.get("error");
     if (urlError) {
       setError(getFriendlyErrorMessage(urlError));
     }
@@ -58,10 +62,20 @@ export default function SignupPage() {
   // Show loading state while checking authentication
   if (status === "loading") {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <div style={{ textAlign: 'center' }}>
-          <i className="fas fa-spinner fa-spin" style={{ fontSize: '48px', color: '#4CAF50' }}></i>
-          <p style={{ marginTop: '20px' }}>Loading...</p>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <i
+            className="fas fa-spinner fa-spin"
+            style={{ fontSize: "48px", color: "#4CAF50" }}
+          ></i>
+          <p style={{ marginTop: "20px" }}>Loading...</p>
         </div>
       </div>
     );
@@ -106,7 +120,9 @@ export default function SignupPage() {
 
     // Warn about breached passwords
     if (isPasswordBreached) {
-      setError("This password has been found in a data breach. Please choose a different password.");
+      setError(
+        "This password has been found in a data breach. Please choose a different password."
+      );
       return;
     }
 
@@ -114,49 +130,53 @@ export default function SignupPage() {
 
     try {
       // Get reCAPTCHA token
-      const recaptchaToken = await getToken('signup');
-      
-      if (!recaptchaToken && process.env.NODE_ENV !== 'development') {
-        throw new Error('Security verification failed. Please try again.');
+      const recaptchaToken = await getToken("signup");
+
+      if (!recaptchaToken && process.env.NODE_ENV !== "development") {
+        throw new Error("Security verification failed. Please try again.");
       }
 
-      const response = await fetch('/api/auth/register', getCsrfHeaders(csrfToken, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.password,
-          recaptchaToken,
-        }),
-      }));
+      const response = await fetch(
+        "/api/auth/register",
+        getCsrfHeaders(csrfToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: formData.fullName,
+            email: formData.email,
+            password: formData.password,
+            recaptchaToken,
+          }),
+        })
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Something went wrong');
+        throw new Error(data.error || "Something went wrong");
       }
 
       // Save token to localStorage (you might want to use a more secure method)
-      localStorage.setItem('token', data.token);
-      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
 
       // Store development link if provided
       if (data.developmentLink) {
         setDevVerificationLink(data.developmentLink);
-        console.log('Development verification link:', data.developmentLink);
+        console.log("Development verification link:", data.developmentLink);
       }
 
       // Show success message and redirect to login
-      setSuccess("Account created successfully! Please check your email to verify your account.");
-      
+      setSuccess(
+        "Account created successfully! Please check your email to verify your account."
+      );
+
       // Redirect to login page after 2 seconds
       setTimeout(() => {
-        router.push('/login');
+        router.push("/login");
       }, 2000);
-
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error.message || error));
     } finally {
@@ -164,22 +184,22 @@ export default function SignupPage() {
     }
   };
 
-  const handleSocialSignup = async (provider: 'google' | 'facebook') => {
+  const handleSocialSignup = async (provider: "google" | "facebook") => {
     if (socialLoading || isLoading) return; // Prevent double submit
-    
+
     setSocialLoading(provider);
     setError(""); // Clear previous errors
     try {
-      const result = await signIn(provider, { 
-        callbackUrl: '/marketplace',
-        redirect: false 
+      const result = await signIn(provider, {
+        callbackUrl: "/marketplace",
+        redirect: false,
       });
-      
+
       if (result?.error) {
         setError(getFriendlyErrorMessage(result.error));
         setSocialLoading(null);
       } else if (result?.ok) {
-        window.location.href = '/marketplace';
+        window.location.href = "/marketplace";
       }
     } catch (error: any) {
       setError(getFriendlyErrorMessage(error?.message || error));
@@ -222,7 +242,8 @@ export default function SignupPage() {
               Be part of <div>Olongapo&apos;s story.</div> Sign up today.
             </h1>
             <p className="hero-subtitle">
-              Discover authentic crafts, connect with artisans, and support local communities.
+              Discover authentic crafts, connect with artisans, and support
+              local communities.
             </p>
           </div>
 
@@ -250,7 +271,7 @@ export default function SignupPage() {
                 {error || recaptchaError}
               </div>
             )}
-            
+
             {success && (
               <div className="success-message">
                 <i className="fas fa-check-circle"></i>
@@ -259,45 +280,47 @@ export default function SignupPage() {
             )}
 
             <div className="input-group">
-              <input
-                type="text"
+              <Input
                 name="fullName"
+                type="text"
                 placeholder="Full Name"
-                className="form-input"
                 value={formData.fullName}
                 onChange={handleInputChange}
                 required
+                className="form-input"
               />
               <i className="fas fa-user input-icon"></i>
             </div>
 
             <div className="input-group">
-              <input
-                type="email"
+              <Input
                 name="email"
+                type="email"
                 placeholder="Email"
-                className="form-input"
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                className="form-input"
               />
               <i className="fas fa-envelope input-icon"></i>
             </div>
 
             <div className="input-group">
-              <input
-                type={showPassword ? "text" : "password"}
+              <Input
                 name="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                className="form-input"
                 value={formData.password}
                 onChange={handleInputChange}
                 onFocus={() => setIsPasswordFocused(true)}
                 onBlur={() => setIsPasswordFocused(false)}
                 required
+                className="form-input"
               />
               <i
-                className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} input-icon password-toggle`}
+                className={`fas ${
+                  showPassword ? "fa-eye-slash" : "fa-eye"
+                } input-icon password-toggle`}
                 onClick={() => setShowPassword(!showPassword)}
               ></i>
             </div>
@@ -315,17 +338,19 @@ export default function SignupPage() {
             )}
 
             <div className="input-group">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
+              <Input
                 name="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm Password"
-                className="form-input"
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 required
+                className="form-input"
               />
               <i
-                className={`fas ${showConfirmPassword ? "fa-eye-slash" : "fa-eye"} input-icon password-toggle`}
+                className={`fas ${
+                  showConfirmPassword ? "fa-eye-slash" : "fa-eye"
+                } input-icon password-toggle`}
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               ></i>
             </div>
@@ -339,13 +364,20 @@ export default function SignupPage() {
                 />
                 <span className="checkmark"></span>
                 By checking this box, you are agreeing to our{" "}
-                <span className="terms-link" onClick={() => setShowTermsModal(true)}>
+                <span
+                  className="terms-link"
+                  onClick={() => setShowTermsModal(true)}
+                >
                   Terms of Service
                 </span>
               </label>
             </div>
 
-            <button type="submit" className="signup-button" disabled={isLoading || socialLoading !== null}>
+            <button
+              type="submit"
+              className="signup-button"
+              disabled={isLoading || socialLoading !== null}
+            >
               {isLoading ? (
                 <>
                   <i className="fas fa-spinner fa-spin"></i>
@@ -362,14 +394,24 @@ export default function SignupPage() {
           </div>
 
           <div className="social-signup">
-            <button 
+            <button
               className="social-button facebook"
-              onClick={() => handleSocialSignup('facebook')}
+              onClick={() => handleSocialSignup("facebook")}
               type="button"
               disabled={isLoading || socialLoading !== null}
-              style={{ opacity: socialLoading === 'facebook' || (socialLoading && socialLoading !== 'facebook') ? 0.6 : 1, cursor: (isLoading || socialLoading !== null) ? 'not-allowed' : 'pointer' }}
+              style={{
+                opacity:
+                  socialLoading === "facebook" ||
+                  (socialLoading && socialLoading !== "facebook")
+                    ? 0.6
+                    : 1,
+                cursor:
+                  isLoading || socialLoading !== null
+                    ? "not-allowed"
+                    : "pointer",
+              }}
             >
-              {socialLoading === 'facebook' ? (
+              {socialLoading === "facebook" ? (
                 <i className="fas fa-spinner fa-spin"></i>
               ) : (
                 <Image
@@ -381,14 +423,24 @@ export default function SignupPage() {
                 />
               )}
             </button>
-            <button 
+            <button
               className="social-button google"
-              onClick={() => handleSocialSignup('google')}
+              onClick={() => handleSocialSignup("google")}
               type="button"
               disabled={isLoading || socialLoading !== null}
-              style={{ opacity: socialLoading === 'google' || (socialLoading && socialLoading !== 'google') ? 0.6 : 1, cursor: (isLoading || socialLoading !== null) ? 'not-allowed' : 'pointer' }}
+              style={{
+                opacity:
+                  socialLoading === "google" ||
+                  (socialLoading && socialLoading !== "google")
+                    ? 0.6
+                    : 1,
+                cursor:
+                  isLoading || socialLoading !== null
+                    ? "not-allowed"
+                    : "pointer",
+              }}
             >
-              {socialLoading === 'google' ? (
+              {socialLoading === "google" ? (
                 <i className="fas fa-spinner fa-spin"></i>
               ) : (
                 <Image
@@ -419,17 +471,63 @@ export default function SignupPage() {
             </div>
 
             <div className="modal-body">
-              <p>Welcome to GrowLokal, a digital marketplace created to connect Olongapo’s artisans, entrepreneurs, and consumers. By accessing or using our platform, you agree to these Terms of Service. Please read them carefully before proceeding. <br /><br />
-                GrowLokal exists to provide a community-driven space where users can explore local crafts, discover cultural products, and support local entrepreneurs. By registering, you confirm that you are <b>at least eighteen (18) years old</b> or that you have the consent of a parent or guardian to use the platform. You also agree to provide accurate and truthful information when creating your account. <br /><br />
-                As a member of GrowLokal, you are expected to use the platform responsibly and respectfully. You must not engage in harmful behavior, post misleading or inappropriate content, or misuse the services provided. Any content you upload, such as product descriptions or images, remains your property; however, by posting, you grant GrowLokal permission to display this content on the platform. <b>Please ensure that all content you share belongs to you or that you have the right to share it.</b><br /><br />
-                We are committed to fostering a respectful and inclusive community. Accounts or content that promote hate speech, scams, violence, or cultural disrespect may be removed at our discretion. GrowLokal is a student-developed project intended for educational purposes. As such, we cannot guarantee uninterrupted services and we are not liable for disputes or issues that may arise between users in connection with products or transactions. Users are solely responsible for verifying the authenticity of sellers, buyers, and products.<br /><br />
-                Your privacy is important to us. Information you provide during signup, such as your name, email address, or other account details, will only be used to grant you access to the platform and improve your experience. We will never sell or misuse your personal data.
-                These Terms of Service may be updated from time to time, and continued use of the platform means you accept any revisions made. Should you have any questions, concerns, or suggestions, you may reach us at  <b>growlokal.team@gmail.com. </b>
-                By proceeding with signup, you acknowledge that you have read, understood, and agreed to these Terms of Service.</p>
+              <p>
+                Welcome to GrowLokal, a digital marketplace created to connect
+                Olongapo’s artisans, entrepreneurs, and consumers. By accessing
+                or using our platform, you agree to these Terms of Service.
+                Please read them carefully before proceeding. <br />
+                <br />
+                GrowLokal exists to provide a community-driven space where users
+                can explore local crafts, discover cultural products, and
+                support local entrepreneurs. By registering, you confirm that
+                you are <b>at least eighteen (18) years old</b> or that you have
+                the consent of a parent or guardian to use the platform. You
+                also agree to provide accurate and truthful information when
+                creating your account. <br />
+                <br />
+                As a member of GrowLokal, you are expected to use the platform
+                responsibly and respectfully. You must not engage in harmful
+                behavior, post misleading or inappropriate content, or misuse
+                the services provided. Any content you upload, such as product
+                descriptions or images, remains your property; however, by
+                posting, you grant GrowLokal permission to display this content
+                on the platform.{" "}
+                <b>
+                  Please ensure that all content you share belongs to you or
+                  that you have the right to share it.
+                </b>
+                <br />
+                <br />
+                We are committed to fostering a respectful and inclusive
+                community. Accounts or content that promote hate speech, scams,
+                violence, or cultural disrespect may be removed at our
+                discretion. GrowLokal is a student-developed project intended
+                for educational purposes. As such, we cannot guarantee
+                uninterrupted services and we are not liable for disputes or
+                issues that may arise between users in connection with products
+                or transactions. Users are solely responsible for verifying the
+                authenticity of sellers, buyers, and products.
+                <br />
+                <br />
+                Your privacy is important to us. Information you provide during
+                signup, such as your name, email address, or other account
+                details, will only be used to grant you access to the platform
+                and improve your experience. We will never sell or misuse your
+                personal data. These Terms of Service may be updated from time
+                to time, and continued use of the platform means you accept any
+                revisions made. Should you have any questions, concerns, or
+                suggestions, you may reach us at{" "}
+                <b>growlokal.team@gmail.com. </b>
+                By proceeding with signup, you acknowledge that you have read,
+                understood, and agreed to these Terms of Service.
+              </p>
             </div>
 
             <div className="modal-footer">
-              <button className="decline-btn" onClick={() => setShowTermsModal(false)}>
+              <button
+                className="decline-btn"
+                onClick={() => setShowTermsModal(false)}
+              >
                 Decline
               </button>
               <button

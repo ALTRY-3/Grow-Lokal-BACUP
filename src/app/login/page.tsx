@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ImageCarousel from "@/components/ImageCarousel";
 import ResendVerification from "@/components/ResendVerification";
+import { Button, Input } from "@/components/atoms";
 import { getFriendlyErrorMessage, isVerificationError } from "@/lib/authErrors";
 import "./login.css";
 
@@ -234,27 +235,30 @@ export default function LoginPage() {
             )}
 
             <div className="input-group">
-              <input
-                type="email"
+              <Input
+                id="email"
                 name="email"
+                type="email"
                 placeholder="Email"
-                className="form-input"
                 value={formData.email}
                 onChange={handleInputChange}
                 required
+                error={error ? "Invalid email or password" : undefined}
+                className="form-input"
               />
               <i className="fas fa-envelope input-icon"></i>
             </div>
 
             <div className="input-group">
-              <input
-                type={showPassword ? "text" : "password"}
+              <Input
+                id="password"
                 name="password"
+                type={showPassword ? "text" : "password"}
                 placeholder="Password"
-                className="form-input"
                 value={formData.password}
                 onChange={handleInputChange}
                 required
+                className="form-input"
               />
               <i
                 className={`fas ${

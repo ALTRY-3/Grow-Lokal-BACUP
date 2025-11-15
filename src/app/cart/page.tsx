@@ -5,6 +5,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FaShoppingCart, FaTrash } from "react-icons/fa";
 import { useRouter } from "next/navigation";
+import { Button, Badge } from "@/components/atoms";
+import { Card } from "@/components/molecules";
 import { useCartStore } from "@/store/cartStore";
 import "./cart.css";
 
@@ -21,19 +23,13 @@ interface CartItemWithSelection {
 
 export default function CartPage() {
   // Zustand store
-  const { 
-    items, 
-    isLoading, 
-    error, 
-    fetchCart, 
-    updateQuantity, 
-    removeItem 
-  } = useCartStore();
+  const { items, isLoading, error, fetchCart, updateQuantity, removeItem } =
+    useCartStore();
 
   // Local UI state for item selection
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [operationLoading, setOperationLoading] = useState<string | null>(null);
-  
+
   const footerRef = useRef<HTMLDivElement>(null);
   const [hideCartFooter, setHideCartFooter] = useState(false);
   const router = useRouter();
@@ -44,24 +40,29 @@ export default function CartPage() {
   }, [fetchCart]);
 
   // Map API items to UI format with selection state
-  const cartItemsWithSelection: CartItemWithSelection[] = items.map(item => ({
+  const cartItemsWithSelection: CartItemWithSelection[] = items.map((item) => ({
     ...item,
-    selected: selectedItems.has(item.productId)
+    selected: selectedItems.has(item.productId),
   }));
 
   // Computed values based on selection
-  const selectedCartItems = cartItemsWithSelection.filter(item => item.selected);
-  const totalPrice = selectedCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const selectedCartItems = cartItemsWithSelection.filter(
+    (item) => item.selected
+  );
+  const totalPrice = selectedCartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
   const selectedCount = selectedCartItems.length;
 
   const incrementQty = async (productId: string, currentQuantity: number) => {
     if (operationLoading === productId) return;
-    
+
     setOperationLoading(productId);
     try {
       await updateQuantity(productId, currentQuantity + 1);
     } catch (error) {
-      console.error('Failed to update quantity:', error);
+      console.error("Failed to update quantity:", error);
     } finally {
       setOperationLoading(null);
     }
@@ -69,19 +70,19 @@ export default function CartPage() {
 
   const decrementQty = async (productId: string, currentQuantity: number) => {
     if (operationLoading === productId || currentQuantity <= 1) return;
-    
+
     setOperationLoading(productId);
     try {
       await updateQuantity(productId, currentQuantity - 1);
     } catch (error) {
-      console.error('Failed to update quantity:', error);
+      console.error("Failed to update quantity:", error);
     } finally {
       setOperationLoading(null);
     }
   };
 
   const toggleSelectItem = (productId: string) => {
-    setSelectedItems(prev => {
+    setSelectedItems((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(productId)) {
         newSet.delete(productId);
@@ -94,7 +95,9 @@ export default function CartPage() {
 
   const selectAllItems = (checked: boolean) => {
     if (checked) {
-      setSelectedItems(new Set(cartItemsWithSelection.map(item => item.productId)));
+      setSelectedItems(
+        new Set(cartItemsWithSelection.map((item) => item.productId))
+      );
     } else {
       setSelectedItems(new Set());
     }
@@ -102,16 +105,18 @@ export default function CartPage() {
 
   const deleteSelected = async () => {
     if (selectedItems.size === 0) return;
-    
+
     const itemsToDelete = Array.from(selectedItems);
-    setOperationLoading('bulk-delete');
-    
+    setOperationLoading("bulk-delete");
+
     try {
       // Delete selected items one by one
-      await Promise.all(itemsToDelete.map(productId => removeItem(productId)));
+      await Promise.all(
+        itemsToDelete.map((productId) => removeItem(productId))
+      );
       setSelectedItems(new Set()); // Clear selection after successful deletion
     } catch (error) {
-      console.error('Failed to delete selected items:', error);
+      console.error("Failed to delete selected items:", error);
     } finally {
       setOperationLoading(null);
     }
@@ -119,18 +124,18 @@ export default function CartPage() {
 
   const handleDeleteSingle = async (productId: string) => {
     if (operationLoading === productId) return;
-    
+
     setOperationLoading(productId);
     try {
       await removeItem(productId);
       // Remove from selection if it was selected
-      setSelectedItems(prev => {
+      setSelectedItems((prev) => {
         const newSet = new Set(prev);
         newSet.delete(productId);
         return newSet;
       });
     } catch (error) {
-      console.error('Failed to delete item:', error);
+      console.error("Failed to delete item:", error);
     } finally {
       setOperationLoading(null);
     }
@@ -138,17 +143,17 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (selectedCount === 0) return;
-    
+
     // Pass selected items to checkout page
-    const selectedItemsData = selectedCartItems.map(item => ({
+    const selectedItemsData = selectedCartItems.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
-      price: item.price
+      price: item.price,
     }));
-    
+
     // Store in sessionStorage for checkout page
-    sessionStorage.setItem('checkoutItems', JSON.stringify(selectedItemsData));
-    router.push('/checkout');
+    sessionStorage.setItem("checkoutItems", JSON.stringify(selectedItemsData));
+    router.push("/checkout");
   };
 
   // IntersectionObserver for sticky footer
@@ -161,10 +166,10 @@ export default function CartPage() {
         // Show cart footer when website footer is not visible (not intersecting)
         setHideCartFooter(entry.isIntersecting);
       },
-      { 
-        root: null, 
+      {
+        root: null,
         threshold: 0.1,
-        rootMargin: '0px 0px -50px 0px' // Trigger slightly before footer is fully visible
+        rootMargin: "0px 0px -50px 0px", // Trigger slightly before footer is fully visible
       }
     );
 
@@ -228,7 +233,7 @@ export default function CartPage() {
             <FaShoppingCart className="empty-cart-icon" />
             <h3>Your cart is empty</h3>
             <p>Add some products to get started!</p>
-            <button onClick={() => router.push('/products')}>Shop Now</button>
+            <button onClick={() => router.push("/products")}>Shop Now</button>
           </div>
         </div>
         <div ref={footerRef}>
@@ -265,18 +270,25 @@ export default function CartPage() {
               <div className="cart-item-info">
                 <span className="cart-item-artist">{item.artistName}</span>
                 <span className="cart-item-product">{item.name}</span>
-                <span className="cart-item-price">₱{item.price.toLocaleString()}</span>
+                <span className="cart-item-price">
+                  ₱{item.price.toLocaleString()}
+                </span>
                 <div className="cart-item-quantity">
-                  <button 
+                  <button
                     onClick={() => decrementQty(item.productId, item.quantity)}
-                    disabled={item.quantity <= 1 || operationLoading === item.productId}
+                    disabled={
+                      item.quantity <= 1 || operationLoading === item.productId
+                    }
                   >
                     -
                   </button>
                   <span>{item.quantity}</span>
-                  <button 
+                  <button
                     onClick={() => incrementQty(item.productId, item.quantity)}
-                    disabled={item.quantity >= item.maxStock || operationLoading === item.productId}
+                    disabled={
+                      item.quantity >= item.maxStock ||
+                      operationLoading === item.productId
+                    }
                   >
                     +
                   </button>
@@ -299,19 +311,22 @@ export default function CartPage() {
           <input
             type="checkbox"
             className="footer-checkbox"
-            checked={selectedCount === cartItemsWithSelection.length && cartItemsWithSelection.length > 0}
+            checked={
+              selectedCount === cartItemsWithSelection.length &&
+              cartItemsWithSelection.length > 0
+            }
             onChange={(e) => selectAllItems(e.target.checked)}
           />
           <span className="footer-select-text">
             Select All ({selectedCount})
           </span>
           <div className="footer-divider" />
-          <button 
-            className="footer-delete-btn" 
+          <button
+            className="footer-delete-btn"
             onClick={deleteSelected}
-            disabled={selectedCount === 0 || operationLoading === 'bulk-delete'}
+            disabled={selectedCount === 0 || operationLoading === "bulk-delete"}
           >
-            {operationLoading === 'bulk-delete' ? 'Deleting...' : 'Delete'}
+            {operationLoading === "bulk-delete" ? "Deleting..." : "Delete"}
           </button>
         </div>
 
@@ -338,4 +353,3 @@ export default function CartPage() {
     </>
   );
 }
-

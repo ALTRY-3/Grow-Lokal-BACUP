@@ -12,6 +12,8 @@ import {
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductModal from "@/components/ProductModal";
+import { SearchBar, Pagination } from "@/components/molecules";
+import { Badge } from "@/components/atoms";
 import { useCartStore } from "@/store/cartStore";
 import "./marketplace.css";
 
@@ -863,6 +865,7 @@ function Section({
   const [addingProduct, setAddingProduct] = useState<string | null>(null);
   const [successProduct, setSuccessProduct] = useState<string | null>(null);
   const [errorProduct, setErrorProduct] = useState<string | null>(null);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const handleAddToCart = async (product: Product, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
@@ -902,7 +905,14 @@ function Section({
       </div>
       <div className="product-grid">
         {products.map((product) => (
-          <div className="product-card" key={product._id}>
+          <div
+            className={`product-card ${
+              activeCardId === product._id ? "active" : ""
+            }`}
+            key={product._id}
+            onClick={() => setActiveCardId(product._id)}
+            onMouseLeave={() => setActiveCardId(null)}
+          >
             <div className="image-container">
               <img
                 src={product.images[0] || product.thumbnailUrl}

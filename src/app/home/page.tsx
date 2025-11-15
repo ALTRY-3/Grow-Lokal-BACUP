@@ -5,7 +5,9 @@ import Link from "next/link";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ImageCarousel from "@/components/ImageCarousel1";
-import ProductModal from "@/components/ProductModal"; // Add this import
+import ProductModal from "@/components/ProductModal";
+import { Button, Badge } from "@/components/atoms";
+import { Card, Pagination } from "@/components/molecules";
 import { FaStar } from "react-icons/fa";
 import { MapPin } from "lucide-react";
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
@@ -602,12 +604,16 @@ export default function HomePage() {
                     <div className="home-artisan-info">
                       <h3 className="home-artisan-name">{artisan.name}</h3>
                       <div className="home-artisan-tags">
-                        <span className="home-artisan-tag craft-type">
-                          {artisan.craftType}
-                        </span>
-                        <span className="home-artisan-tag category">
-                          {artisan.category}
-                        </span>
+                        <Badge
+                          label={artisan.craftType}
+                          variant="secondary"
+                          size="small"
+                        />
+                        <Badge
+                          label={artisan.category}
+                          variant="primary"
+                          size="small"
+                        />
                       </div>
                       <div className="home-artisan-location">
                         <MapPin size={12} />
@@ -684,12 +690,16 @@ export default function HomePage() {
                         {product.barangay}
                       </p>
                       <div className="home-product-tags">
-                        <span className="home-product-tag craft-type">
-                          {product.craftType}
-                        </span>
-                        <span className="home-product-tag category">
-                          {product.category}
-                        </span>
+                        <Badge
+                          label={product.craftType}
+                          variant="secondary"
+                          size="small"
+                        />
+                        <Badge
+                          label={product.category}
+                          variant="primary"
+                          size="small"
+                        />
                       </div>
                     </div>
                     <div className="home-product-info-bottom">
