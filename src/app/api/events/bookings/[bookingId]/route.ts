@@ -1,12 +1,12 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
 import EventBooking from "@/models/EventBooking";
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { bookingId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -18,7 +18,7 @@ export async function PATCH(
       );
     }
 
-    const { bookingId } = params;
+    const { bookingId } = await params;
 
     const body = await request.json();
     const { participants, message } = body ?? {};
@@ -65,8 +65,8 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: Request,
-  { params }: { params: { bookingId: string } }
+  _request: NextRequest,
+  { params }: { params: Promise<{ bookingId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -78,7 +78,7 @@ export async function DELETE(
       );
     }
 
-    const { bookingId } = params;
+    const { bookingId } = await params;
 
     await connectDB();
 

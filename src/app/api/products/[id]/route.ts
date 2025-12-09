@@ -9,12 +9,12 @@ import mongoose from 'mongoose';
 // GET /api/products/[id] - Get single product by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -57,7 +57,7 @@ export async function GET(
 // PUT /api/products/[id] - Update product (requires seller authentication)
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -71,7 +71,7 @@ export async function PUT(
 
     await connectDB();
 
-    const { id } = params;
+    const { id } = await params;
     const user = await User.findOne({ email: session.user.email });
     
     if (!user || user.sellerProfile?.applicationStatus !== 'approved') {
@@ -154,7 +154,7 @@ export async function PUT(
 // PATCH /api/products/[id] - Partially update product (requires seller authentication)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -178,7 +178,7 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -246,7 +246,7 @@ export async function PATCH(
 // DELETE /api/products/[id] - Delete product (requires seller authentication)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Check authentication
@@ -270,7 +270,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {

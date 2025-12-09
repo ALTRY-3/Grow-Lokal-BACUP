@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import connectDB from "@/lib/mongodb";
@@ -7,8 +7,8 @@ import mongoose from "mongoose";
 
 // PUT - Confirm order receipt
 export async function PUT(
-  request: Request,
-  { params }: { params: { orderId: string } }
+  request: NextRequest,
+  { params }: { params: Promise<{ orderId: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
