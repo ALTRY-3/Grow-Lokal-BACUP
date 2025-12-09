@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useMemo,
+  useCallback,
+} from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { MdNotifications, MdNotificationsActive } from "react-icons/md";
@@ -88,12 +95,14 @@ type BookingDeleteResponse =
   | { success: true }
   | { success: false; message?: string };
 
-const toIsoString = (value?: string | Date) => {
+const toIsoString = (value?: string | Date | null) => {
   if (!value) {
     return new Date().toISOString();
   }
   const date = typeof value === "string" ? new Date(value) : value;
-  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
+  return Number.isNaN(date.getTime())
+    ? new Date().toISOString()
+    : date.toISOString();
 };
 
 const formatDisplayDate = (value: string): string => {
@@ -142,9 +151,9 @@ const normalizeBooking = (booking: RawBooking): StoredBooking => {
   };
 };
 
-const formatDateKey = (value: string | Date): string => {
+const formatDateKey = (value: string | Date | null | undefined): string => {
   const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) {
+  if (!date || Number.isNaN(date.getTime())) {
     return "";
   }
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -403,9 +412,7 @@ function BookingModal({
               <button
                 type="submit"
                 className="booking-modal-submit-btn"
-                disabled={
-                  !formData.name || !formData.email || isSubmitting
-                }
+                disabled={!formData.name || !formData.email || isSubmitting}
               >
                 {isSubmitting ? "Booking..." : "Confirm Booking"}
               </button>
@@ -422,7 +429,10 @@ interface ManageBookingModalProps {
   booking: StoredBooking | null;
   mode: "edit" | "cancel";
   onClose: () => void;
-  onSubmit: (updates: { participants: number; message: string }) => Promise<boolean>;
+  onSubmit: (updates: {
+    participants: number;
+    message: string;
+  }) => Promise<boolean>;
   onCancelBooking: () => Promise<boolean>;
   isSubmitting: boolean;
   isCancelling: boolean;
@@ -467,7 +477,10 @@ function ManageBookingModal({
     <div
       className="booking-modal-backdrop"
       onClick={(e) =>
-        e.target === e.currentTarget && !isSubmitting && !isCancelling && onClose()
+        e.target === e.currentTarget &&
+        !isSubmitting &&
+        !isCancelling &&
+        onClose()
       }
     >
       <div className="booking-modal">
@@ -575,8 +588,12 @@ function ManageBookingModal({
 export default function EventsPage() {
   const [date, setDate] = useState<Date>(new Date());
   const [reminders, setReminders] = useState<string[]>([]);
-  const [subscribedEventIds, setSubscribedEventIds] = useState<Set<number>>(new Set());
-  const [subscriptionLoading, setSubscriptionLoading] = useState<number | null>(null);
+  const [subscribedEventIds, setSubscribedEventIds] = useState<Set<number>>(
+    new Set()
+  );
+  const [subscriptionLoading, setSubscriptionLoading] = useState<number | null>(
+    null
+  );
   const [query, setQuery] = useState("");
   const [, setSuggestions] = useState<typeof events>([]);
   const [calendarReminder, setCalendarReminder] = useState(false);
@@ -588,7 +605,9 @@ export default function EventsPage() {
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [isBookingSubmitting, setIsBookingSubmitting] = useState(false);
-  const [bookingModalError, setBookingModalError] = useState<string | null>(null);
+  const [bookingModalError, setBookingModalError] = useState<string | null>(
+    null
+  );
   const [showManageModal, setShowManageModal] = useState(false);
   const [selectedBookingForManage, setSelectedBookingForManage] =
     useState<StoredBooking | null>(null);
@@ -615,7 +634,8 @@ export default function EventsPage() {
   const allEventsGridRef = useRef<HTMLDivElement | null>(null);
   const [emphasizedEvent, setEmphasizedEvent] = useState<string | null>(null);
   const searchParams = useSearchParams();
-  const { status: authStatus } = useSession();
+  const { status: authStatus, data: session } = useSession();
+  const router = useRouter();
 
   // Load reminders from localStorage on mount and fetch subscriptions
   useEffect(() => {
@@ -643,9 +663,11 @@ export default function EventsPage() {
           data.data.map((sub: { eventId: number }) => sub.eventId)
         );
         setSubscribedEventIds(subscribedIds);
-        
+
         // Also sync with localStorage reminders for backward compatibility
-        const subscribedDates = data.data.map((sub: { eventDate: string }) => sub.eventDate);
+        const subscribedDates = data.data.map(
+          (sub: { eventDate: string }) => sub.eventDate
+        );
         setReminders(subscribedDates);
         localStorage.setItem("eventReminders", JSON.stringify(subscribedDates));
       }
@@ -820,9 +842,12 @@ export default function EventsPage() {
     try {
       if (isSubscribed) {
         // Unsubscribe
-        const response = await fetch(`/api/events/subscriptions?eventId=${eventId}`, {
-          method: "DELETE",
-        });
+        const response = await fetch(
+          `/api/events/subscriptions?eventId=${eventId}`,
+          {
+            method: "DELETE",
+          }
+        );
         const data = await response.json();
 
         if (data.success) {
@@ -833,7 +858,10 @@ export default function EventsPage() {
           });
           setReminders((prev) => {
             const newReminders = prev.filter((d) => d !== eventDate);
-            localStorage.setItem("eventReminders", JSON.stringify(newReminders));
+            localStorage.setItem(
+              "eventReminders",
+              JSON.stringify(newReminders)
+            );
             return newReminders;
           });
           // Broadcast to update notification counts
@@ -856,7 +884,10 @@ export default function EventsPage() {
           setSubscribedEventIds((prev) => new Set([...prev, eventId]));
           setReminders((prev) => {
             const newReminders = [...prev, eventDate];
-            localStorage.setItem("eventReminders", JSON.stringify(newReminders));
+            localStorage.setItem(
+              "eventReminders",
+              JSON.stringify(newReminders)
+            );
             return newReminders;
           });
           // Broadcast to update notification counts
@@ -906,6 +937,8 @@ export default function EventsPage() {
         return false;
       }
 
+      // Proceed with booking if authenticated
+
       setBookingModalError(null);
       setIsBookingSubmitting(true);
 
@@ -946,7 +979,7 @@ export default function EventsPage() {
         setIsBookingSubmitting(false);
       }
     },
-    [authStatus]
+    [authStatus, router]
   );
 
   const handleManageSubmit = useCallback(
@@ -1197,12 +1230,20 @@ export default function EventsPage() {
                       ) : (
                         <button
                           className={`reminder-btn ${
-                            subscribedEventIds.has(event.id) || reminders.includes(event.date) ? "active" : ""
-                          } ${subscriptionLoading === event.id ? "loading" : ""}`}
+                            subscribedEventIds.has(event.id) ||
+                            reminders.includes(event.date)
+                              ? "active"
+                              : ""
+                          } ${
+                            subscriptionLoading === event.id ? "loading" : ""
+                          }`}
                           onClick={() =>
                             !isPastEvent(event.date) && toggleReminder(idx)
                           }
-                          disabled={isPastEvent(event.date) || subscriptionLoading === event.id}
+                          disabled={
+                            isPastEvent(event.date) ||
+                            subscriptionLoading === event.id
+                          }
                           title={
                             isPastEvent(event.date)
                               ? "Cannot set reminder for past events"
@@ -1213,7 +1254,8 @@ export default function EventsPage() {
                         >
                           {subscriptionLoading === event.id ? (
                             <span className="subscription-spinner" />
-                          ) : subscribedEventIds.has(event.id) || reminders.includes(event.date) ? (
+                          ) : subscribedEventIds.has(event.id) ||
+                            reminders.includes(event.date) ? (
                             <MdNotificationsActive className="icon-ringing" />
                           ) : (
                             <MdNotifications />
@@ -1260,7 +1302,7 @@ export default function EventsPage() {
           <form
             className="events-search-bar"
             role="search"
-            aria-label="Search for Olongapo&apos;s events"
+            aria-label="Search for Olongapo's events"
             onSubmit={(e) => e.preventDefault()}
           >
             <FaSearch className="search-icon" aria-hidden="true" />
@@ -1402,8 +1444,13 @@ export default function EventsPage() {
                       ) : (
                         <button
                           className={`reminder-btn ${
-                            subscribedEventIds.has(event.id) || reminders.includes(event.date) ? "active" : ""
-                          } ${subscriptionLoading === event.id ? "loading" : ""}`}
+                            subscribedEventIds.has(event.id) ||
+                            reminders.includes(event.date)
+                              ? "active"
+                              : ""
+                          } ${
+                            subscriptionLoading === event.id ? "loading" : ""
+                          }`}
                           onClick={() => {
                             const eventIndex = events.findIndex(
                               (e) => e.id === event.id
@@ -1412,7 +1459,10 @@ export default function EventsPage() {
                               toggleReminder(eventIndex);
                             }
                           }}
-                          disabled={isPastEvent(event.date) || subscriptionLoading === event.id}
+                          disabled={
+                            isPastEvent(event.date) ||
+                            subscriptionLoading === event.id
+                          }
                           title={
                             isPastEvent(event.date)
                               ? "Cannot set reminder for past events"
@@ -1423,7 +1473,8 @@ export default function EventsPage() {
                         >
                           {subscriptionLoading === event.id ? (
                             <span className="subscription-spinner" />
-                          ) : subscribedEventIds.has(event.id) || reminders.includes(event.date) ? (
+                          ) : subscribedEventIds.has(event.id) ||
+                            reminders.includes(event.date) ? (
                             <MdNotificationsActive className="icon-ringing" />
                           ) : (
                             <MdNotifications />
@@ -1503,23 +1554,22 @@ export default function EventsPage() {
               <div className="calendar-actions">
                 <button
                   type="button"
-                  className={`calendar-icon-box ${
-                    (() => {
-                      const selectedDateStr =
-                        date.getFullYear() +
-                        "-" +
-                        String(date.getMonth() + 1).padStart(2, "0") +
-                        "-" +
-                        String(date.getDate()).padStart(2, "0");
-                      const matchingEvent = events.find(
-                        (e) => e.date === selectedDateStr
-                      );
-                      return (matchingEvent && subscribedEventIds.has(matchingEvent.id)) ||
-                        reminders.includes(selectedDateStr)
-                        ? "active"
-                        : "";
-                    })()
-                  }`}
+                  className={`calendar-icon-box ${(() => {
+                    const selectedDateStr =
+                      date.getFullYear() +
+                      "-" +
+                      String(date.getMonth() + 1).padStart(2, "0") +
+                      "-" +
+                      String(date.getDate()).padStart(2, "0");
+                    const matchingEvent = events.find(
+                      (e) => e.date === selectedDateStr
+                    );
+                    return (matchingEvent &&
+                      subscribedEventIds.has(matchingEvent.id)) ||
+                      reminders.includes(selectedDateStr)
+                      ? "active"
+                      : "";
+                  })()}`}
                   disabled={isPastEvent(
                     date.getFullYear() +
                       "-" +
@@ -1569,9 +1619,11 @@ export default function EventsPage() {
                       (e) => e.date === selectedDateStr
                     );
                     const isSubscribed =
-                      (matchingEvent && subscribedEventIds.has(matchingEvent.id)) ||
+                      (matchingEvent &&
+                        subscribedEventIds.has(matchingEvent.id)) ||
                       reminders.includes(selectedDateStr);
-                    const isLoading = matchingEvent && subscriptionLoading === matchingEvent.id;
+                    const isLoading =
+                      matchingEvent && subscriptionLoading === matchingEvent.id;
 
                     if (isLoading) {
                       return <span className="subscription-spinner" />;
@@ -1755,10 +1807,7 @@ export default function EventsPage() {
                   {upcomingBookings.map((booking) => {
                     const daysUntil = getDaysUntil(booking.eventDate);
                     return (
-                      <li
-                        key={booking._id}
-                        className="calendar-booking-card"
-                      >
+                      <li key={booking._id} className="calendar-booking-card">
                         <div className="calendar-booking-date">
                           {formatDisplayDate(booking.eventDate)}
                         </div>
@@ -1770,8 +1819,7 @@ export default function EventsPage() {
                             <FaClock aria-hidden="true" /> {booking.eventTime}
                           </span>
                           <span>
-                            <FaMapMarkerAlt aria-hidden="true" />
-                            {" "}
+                            <FaMapMarkerAlt aria-hidden="true" />{" "}
                             {booking.eventLocation}
                           </span>
                         </div>

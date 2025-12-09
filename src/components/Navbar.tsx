@@ -48,7 +48,7 @@ export default function Navbar() {
     "/default-profile.jpg"
   );
 
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const {
     items,
@@ -178,8 +178,11 @@ export default function Navbar() {
           `/api/notifications?limit=20&tab=${notificationTab}`,
           { cache: "no-store" }
         );
-        const data: { success: boolean; data?: NotificationDTO[]; message?: string } =
-          await response.json();
+        const data: {
+          success: boolean;
+          data?: NotificationDTO[];
+          message?: string;
+        } = await response.json();
 
         if (!response.ok || !data.success || !data.data) {
           throw new Error(data.message || "Failed to load notifications");
@@ -187,7 +190,7 @@ export default function Navbar() {
 
         setNotifications(data.data);
         setNotificationsError(null);
-        
+
         // Also refresh unread count
         fetchUnreadCount();
       } catch (error) {
@@ -220,7 +223,8 @@ export default function Navbar() {
       fetchUnreadCount();
     };
     window.addEventListener("notifications:updated", handleUpdated);
-    return () => window.removeEventListener("notifications:updated", handleUpdated);
+    return () =>
+      window.removeEventListener("notifications:updated", handleUpdated);
   }, [fetchNotifications, fetchUnreadCount]);
 
   useEffect(() => {
@@ -303,7 +307,7 @@ export default function Navbar() {
       setIsLoggingOut(true);
       await signOut({
         redirect: true,
-        callbackUrl: "/login",
+        callbackUrl: "/home",
       });
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -317,18 +321,16 @@ export default function Navbar() {
   // Mark all notifications as read
   const handleMarkAllAsRead = async () => {
     if (markingAsRead || unreadCount === 0) return;
-    
+
     setMarkingAsRead(true);
     try {
       const response = await fetch("/api/notifications/mark-read", {
         method: "POST",
       });
-      
+
       if (response.ok) {
         // Update local state to mark all as read
-        setNotifications((prev) =>
-          prev.map((n) => ({ ...n, read: true }))
-        );
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
         setUnreadCount(0);
       }
     } catch (error) {
@@ -346,13 +348,11 @@ export default function Navbar() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId }),
       });
-      
+
       if (response.ok) {
         // Update local state
         setNotifications((prev) =>
-          prev.map((n) =>
-            n._id === notificationId ? { ...n, read: true } : n
-          )
+          prev.map((n) => (n._id === notificationId ? { ...n, read: true } : n))
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
@@ -411,7 +411,7 @@ export default function Navbar() {
                       </span>
                     )}
                   </h3>
-                  <button 
+                  <button
                     className={styles.markAllReadBtn}
                     onClick={handleMarkAllAsRead}
                     disabled={markingAsRead || unreadCount === 0}
@@ -447,9 +447,13 @@ export default function Navbar() {
                 </div>
                 <div className={styles.notificationList}>
                   {notificationsLoading ? (
-                    <div className={styles.notificationState}>Loading recent activities...</div>
+                    <div className={styles.notificationState}>
+                      Loading recent activities...
+                    </div>
                   ) : notificationsError ? (
-                    <div className={styles.notificationStateError}>{notificationsError}</div>
+                    <div className={styles.notificationStateError}>
+                      {notificationsError}
+                    </div>
                   ) : notifications.length === 0 ? (
                     <div className={styles.notificationEmpty}>
                       <div className={styles.emptyIcon}>
@@ -464,10 +468,15 @@ export default function Navbar() {
                     notifications.map((notification) => {
                       const detail = getNotificationDetail(notification);
                       return (
-                        <div 
-                          className={`${styles.notificationItem} ${!notification.read ? styles.unread : ""}`} 
+                        <div
+                          className={`${styles.notificationItem} ${
+                            !notification.read ? styles.unread : ""
+                          }`}
                           key={notification._id}
-                          onClick={() => !notification.read && handleMarkAsRead(notification._id)}
+                          onClick={() =>
+                            !notification.read &&
+                            handleMarkAsRead(notification._id)
+                          }
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => {
@@ -477,12 +486,17 @@ export default function Navbar() {
                           }}
                         >
                           {!notification.read && (
-                            <span className={styles.unreadDot} aria-label="Unread notification" />
+                            <span
+                              className={styles.unreadDot}
+                              aria-label="Unread notification"
+                            />
                           )}
                           <div className={styles.notificationItemContent}>
                             <div className={styles.notificationItemHeader}>
                               <span
-                                className={`${styles.notificationTypeBadge} ${styles[notification.type] || ""}`}
+                                className={`${styles.notificationTypeBadge} ${
+                                  styles[notification.type] || ""
+                                }`}
                               >
                                 {getNotificationTypeLabel(notification.type)}
                               </span>
@@ -491,12 +505,16 @@ export default function Navbar() {
                               </span>
                             </div>
                             <div className={styles.notificationItemBody}>
-                              <p className={styles.notificationItemTitle}>{notification.title}</p>
+                              <p className={styles.notificationItemTitle}>
+                                {notification.title}
+                              </p>
                               <p className={styles.notificationItemDescription}>
                                 {notification.description}
                               </p>
                               {detail && (
-                                <div className={styles.notificationMeta}>{detail}</div>
+                                <div className={styles.notificationMeta}>
+                                  {detail}
+                                </div>
                               )}
                             </div>
                           </div>
@@ -682,6 +700,16 @@ export default function Navbar() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
+
+                          // Check if user is verified
+                          if (!session?.user?.isEmailVerified) {
+                            alert(
+                              "Please verify your email to proceed with checkout. Redirecting to login..."
+                            );
+                            router.push("/login");
+                            return;
+                          }
+
                           if (selectedCount === 0) {
                             alert("Please select items to checkout");
                             return;
@@ -723,74 +751,115 @@ export default function Navbar() {
             />
             {showProfile && (
               <div className={`${styles.dropdown} ${styles.dropdownProfile}`}>
-                <div className={styles.profileUserSection}>
-                  <div className={styles.profileAvatar}>
-                    <img
-                      src={userProfilePic}
-                      alt="Profile"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src =
-                          "/default-profile.jpg";
+                {status === "authenticated" ? (
+                  <>
+                    <div className={styles.profileUserSection}>
+                      <div className={styles.profileAvatar}>
+                        <img
+                          src={userProfilePic}
+                          alt="Profile"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "/default-profile.jpg";
+                          }}
+                        />
+                      </div>
+                      <div className={styles.profileUserInfo}>
+                        <p className={styles.profileUserName}>
+                          {session?.user?.name || "User"}
+                        </p>
+                        <p className={styles.profileUserEmail}>
+                          {session?.user?.email || ""}
+                        </p>
+                      </div>
+                    </div>
+
+                    <nav className={styles.profileMenuNav}>
+                      <button
+                        className={styles.profileMenuItem}
+                        onClick={() => {
+                          setShowProfile(false);
+                          router.push("/profile?section=profile");
+                        }}
+                      >
+                        <FaUser className={styles.menuIcon} />
+                        <span className={styles.menuText}>My Account</span>
+                        <FaChevronRight className={styles.menuArrow} />
+                      </button>
+
+                      <button
+                        className={styles.profileMenuItem}
+                        onClick={() => {
+                          setShowProfile(false);
+                          router.push("/profile?section=orders");
+                        }}
+                      >
+                        <FaShoppingBag className={styles.menuIcon} />
+                        <span className={styles.menuText}>My Orders</span>
+                        <FaChevronRight className={styles.menuArrow} />
+                      </button>
+
+                      <button
+                        className={styles.profileMenuItem}
+                        onClick={() => {
+                          setShowProfile(false);
+                          router.push("/profile?section=wishlist");
+                        }}
+                      >
+                        <FaHeart className={styles.menuIcon} />
+                        <span className={styles.menuText}>Wishlist</span>
+                        <FaChevronRight className={styles.menuArrow} />
+                      </button>
+                    </nav>
+
+                    <div className={styles.profileLogoutSection}>
+                      <button
+                        className={styles.profileLogoutBtn}
+                        onClick={handleLogoutClick}
+                      >
+                        <FaSignOutAlt className={styles.logoutIcon} />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.authMenuNav}>
+                    <button
+                      className={styles.authMenuItem}
+                      onClick={() => {
+                        setShowProfile(false);
+                        router.push("/login");
                       }}
-                    />
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        width: "100%",
+                      }}
+                    >
+                      <FaUser className={styles.menuIcon} />
+                      <span className={styles.menuText}>Login</span>
+                      <FaChevronRight className={styles.menuArrow} />
+                    </button>
+                    <button
+                      className={styles.authMenuItem}
+                      onClick={() => {
+                        setShowProfile(false);
+                        router.push("/signup");
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        width: "100%",
+                      }}
+                    >
+                      <FaUser className={styles.menuIcon} />
+                      <span className={styles.menuText}>Sign Up</span>
+                      <FaChevronRight className={styles.menuArrow} />
+                    </button>
                   </div>
-                  <div className={styles.profileUserInfo}>
-                    <p className={styles.profileUserName}>
-                      {session?.user?.name || "User"}
-                    </p>
-                    <p className={styles.profileUserEmail}>
-                      {session?.user?.email || ""}
-                    </p>
-                  </div>
-                </div>
-
-                <nav className={styles.profileMenuNav}>
-                  <button
-                    className={styles.profileMenuItem}
-                    onClick={() => {
-                      setShowProfile(false);
-                      router.push("/profile?section=profile");
-                    }}
-                  >
-                    <FaUser className={styles.menuIcon} />
-                    <span className={styles.menuText}>My Account</span>
-                    <FaChevronRight className={styles.menuArrow} />
-                  </button>
-
-                  <button
-                    className={styles.profileMenuItem}
-                    onClick={() => {
-                      setShowProfile(false);
-                      router.push("/profile?section=orders");
-                    }}
-                  >
-                    <FaShoppingBag className={styles.menuIcon} />
-                    <span className={styles.menuText}>My Orders</span>
-                    <FaChevronRight className={styles.menuArrow} />
-                  </button>
-
-                  <button
-                    className={styles.profileMenuItem}
-                    onClick={() => {
-                      setShowProfile(false);
-                      router.push("/profile?section=wishlist");
-                    }}
-                  >
-                    <FaHeart className={styles.menuIcon} />
-                    <span className={styles.menuText}>Wishlist</span>
-                    <FaChevronRight className={styles.menuArrow} />
-                  </button>
-                </nav>
-
-                <div className={styles.profileLogoutSection}>
-                  <button
-                    className={styles.profileLogoutBtn}
-                    onClick={handleLogoutClick}
-                  >
-                    <FaSignOutAlt className={styles.logoutIcon} />
-                    <span>Logout</span>
-                  </button>
-                </div>
+                )}
               </div>
             )}
           </div>

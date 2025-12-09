@@ -50,6 +50,7 @@ export default function Chatbot() {
     "/checkout",
     "/cart",
     "/profile",
+    "/landing-page",
   ];
 
   // Auto-scroll to bottom on new message

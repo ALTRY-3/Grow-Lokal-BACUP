@@ -9,12 +9,16 @@ import React, {
 } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import ImageCarousel from "@/components/ImageCarousel1";
+import HeroVideoSection from "@/components/HeroVideoSection";
+import GrowLokalCarousel from "@/components/GrowLokalCarousel";
 import ProductModal from "@/components/ProductModal"; // Add this import
 import { useWishlist } from "@/lib/useWishlist";
 import { FaStar } from "react-icons/fa";
+import Image from "next/image";
 
 const HomeMapPreview = dynamic(() => import("@/components/HomeMapPreview"), {
   ssr: false,
@@ -26,7 +30,6 @@ import { Megaphone, Store } from "lucide-react";
 import { MdNotifications, MdNotificationsActive } from "react-icons/md";
 import { BsThreeDotsVertical } from "react-icons/bs";
 import { User } from "lucide-react";
-import { useRouter } from "next/navigation";
 import "./home.css";
 
 const featuredProducts = [
@@ -606,6 +609,15 @@ type TrendingArtisanItem = {
 };
 
 export default function HomePage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/");
+    }
+  }, [status, router]);
+
   const [eventReminders, setEventReminders] = useState<string[]>([]);
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<any>(null); // Change this
@@ -659,8 +671,6 @@ export default function HomePage() {
 
   // Use wishlist hook instead of local state
   const { isInWishlist, toggleWishlist } = useWishlist();
-
-  const router = useRouter();
 
   // Add state to track scroll positions for each carousel
   const [canScrollFeatured, setCanScrollFeatured] = useState({
@@ -888,7 +898,9 @@ export default function HomePage() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const response = await fetch("/api/stories", { signal: controller.signal });
+      const response = await fetch("/api/stories", {
+        signal: controller.signal,
+      });
       clearTimeout(timeoutId);
 
       const data = await response.json();
@@ -923,7 +935,10 @@ export default function HomePage() {
 
   // Re-evaluate trending artisans carousel scroll when data changes
   useEffect(() => {
-    checkScrollPosition(trendingArtisansRef.current, setCanScrollTrendingArtisans);
+    checkScrollPosition(
+      trendingArtisansRef.current,
+      setCanScrollTrendingArtisans
+    );
   }, [combinedTrendingArtisans.length]);
 
   // Recheck scroll position when recommendations finish loading
@@ -1126,909 +1141,1630 @@ export default function HomePage() {
 
   return (
     <div className="homepage">
+      {/* Show Navbar for all users - Navbar will handle login/signup for unauthenticated */}
       <Navbar />
 
-      {/* HERO SECTION */}
-      <section className="hero-section">
-        <ImageCarousel autoSlide={true} slideInterval={3000} />
-        <div className="hero-overlay" />
-        <div className="hero-content">
-          <h1 className="hero-title">
-            Discover Olongapo's Local{" "}
-            <span className="highlight">Crafts, Culture & Stories</span>
-          </h1>
-          <p className="hero-text">
-            Shop handmade treasures, explore artisan stories, and experience the
-            heart of Olongapo — crafted for locals, travelers, and culture
-            lovers from around the world.
-          </p>
-          <div className="hero-tagline-strip">
-            <div className="tagline-item">
-              <span className="tagline-flag-badge">🇵🇭</span>
-              <span className="tagline-text">Proudly Olongapo-Made</span>
-            </div>
-            <div className="tagline-divider"></div>
-            <div className="tagline-item">
-              <span className="tagline-icon">👥</span>
-              <span className="tagline-text">100+ Local Artisans</span>
-            </div>
-            <div className="tagline-divider"></div>
-            <div className="tagline-item">
-              <span className="tagline-icon">❤️</span>
-              <span className="tagline-text">Loved by Travelers & Locals</span>
-            </div>
-          </div>
-          <div className="hero-buttons">
-            <Link href="/marketplace" className="btn-explore">
-              Explore Marketplace
-            </Link>
-            <Link href="/profile" className="btn-start-hero">
-              <span>Start Selling</span>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* HERO VIDEO SECTION - FULL SCREEN VIDEO WITH CTA */}
+      <HeroVideoSection />
 
       <main className="main-content">
-        {/* RECOMMENDED FOR YOU */}
-        <section className="section bg-alt recommended-section">
-          <div className="home-section-header">
-            <div>
-              <div className="section-title-with-icon">
-                <Sparkles className="sparkle-icon" size={24} />
-                <h2>Personalized Picks Just for You</h2>
-              </div>
-              <p
-                style={{
-                  fontSize: "0.9rem",
-                  color: "#666",
-                  marginTop: "0.35rem",
-                  marginBottom: "0",
-                  fontWeight: "400",
-                }}
-              >
-                Discover events, shops, and crafts that match your interests,
-                browsing habits, and location.
-              </p>
-            </div>
-            <span className="personalized-badge">Personalized</span>
-          </div>
-
-          {recommendationsLoading ? (
-            <div className="recommendations-loading">
-              <div className="recommendations-skeleton">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="skeleton-card">
-                    <div className="skeleton-image"></div>
-                    <div className="skeleton-content">
-                      <div className="skeleton-line"></div>
-                      <div className="skeleton-line short"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="carousel-container">
-              {canScrollRecommendations.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      recommendationsRef.current,
-                      setCanScrollRecommendations
-                    )
-                  }
-                  aria-label="Previous"
+        {/* WHAT'S POPULAR IN OLONGAPO - SHOW FOR UNAUTHENTICATED USERS */}
+        {status === "unauthenticated" && (
+          <section className="section bg-white" id="whats-popular">
+            <div className="home-section-header">
+              <div>
+                <h2>What Olongapo is Loving Today</h2>
+                <p
+                  style={{
+                    fontSize: "0.9rem",
+                    color: "#666",
+                    marginTop: "0.35rem",
+                    marginBottom: "0",
+                    fontWeight: "400",
+                  }}
                 >
-                  <FaChevronLeft />
-                </button>
-              )}
+                  See what locals and travelers are discovering and loving right
+                  now.
+                </p>
+              </div>
+            </div>
 
-              <div
-                className="home-recommendations-carousel"
-                ref={recommendationsRef}
-              >
-                {/* Recommended Events */}
-                {recommendedEvents.slice(0, 3).map((event) => (
-                  <div
-                    className="home-recommendation-card event-card"
-                    key={`event-${event.id}`}
+            {/* Trending Crafts Subsection */}
+            <div style={{ marginBottom: "3rem" }}>
+              <h3 className="popular-subsection-title">
+                <Flame
+                  size={18}
+                  style={{ marginRight: "0.5rem", color: "#af7928" }}
+                />
+                Trending Crafts
+                <span className="popular-subsection-subtitle">
+                  Updated Weekly
+                </span>
+              </h3>
+              <div className="carousel-container">
+                {canScrollTrendingCrafts.left && (
+                  <button
+                    className="home-nav-button prev"
+                    onClick={() =>
+                      scroll(
+                        "left",
+                        trendingCraftsRef.current,
+                        setCanScrollTrendingCrafts
+                      )
+                    }
+                    aria-label="Previous"
                   >
-                    <div className="recommendation-header">
-                      <div className="recommendation-match-reason">
-                        <Sparkles size={12} />
-                        <span>{event.matchReason}</span>
-                      </div>
-                    </div>
-                    <div className="recommendation-content">
-                      <div className="recommendation-labels">
-                        <span className="recommendation-badge recommendation-badge-event">
-                          <Calendar size={12} />
-                          <span>Event</span>
-                        </span>
-                        <span className="recommendation-type">
-                          {event.type}
-                        </span>
-                      </div>
-                      <h3 className="recommendation-title">{event.title}</h3>
-                      <p className="recommendation-date">{event.dateText}</p>
-                      <div className="recommendation-location">
-                        <MapPin size={12} />
-                        <span>{event.location}</span>
-                      </div>
-                      {event.featuredArtisan && (
-                        <p className="recommendation-featured">
-                          Featuring: {event.featuredArtisan}
-                        </p>
-                      )}
-                      <button
-                        className="recommendation-action"
-                        onClick={() => handleViewDetails(event.title)}
-                      >
-                        View Event <FaChevronRight size={10} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Recommended Artisans */}
-                {recommendedArtisans.slice(0, 3).map((artisan) => (
-                  <div
-                    className="home-recommendation-card artisan-card"
-                    key={`artisan-${artisan.id}`}
-                  >
-                    <div className="recommendation-header">
-                      <div className="recommendation-match-reason">
-                        <Sparkles size={12} />
-                        <span>{artisan.matchReason}</span>
-                      </div>
-                    </div>
-                    <div className="recommendation-content">
-                      <div className="recommendation-labels">
-                        <span className="recommendation-badge recommendation-badge-artisan">
-                          <Store size={12} />
-                          <span>Shop</span>
-                        </span>
-                      </div>
-                      <div className="recommendation-artisan-header">
-                        <img
-                          src={artisan.avatar}
-                          alt={artisan.name}
-                          className="recommendation-avatar"
-                        />
-                        <div className="recommendation-artisan-info">
-                          <h3 className="recommendation-title">
-                            {artisan.shopName}
-                          </h3>
-                          <p className="recommendation-artist">
-                            by {artisan.name}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="recommendation-tags">
-                        <span className="recommendation-tag craft-type">
-                          {artisan.craftType}
-                        </span>
-                      </div>
-                      <div className="recommendation-location">
-                        <MapPin size={12} />
-                        <span>{artisan.location}</span>
-                      </div>
-                      <div className="recommendation-meta">
-                        <div className="recommendation-rating">
-                          <FaStar className="star-icon" />
-                          <span>{artisan.rating.toFixed(1)}</span>
-                        </div>
-                        <span className="recommendation-products">
-                          {artisan.productsCount} products
-                        </span>
-                      </div>
-                      <Link
-                        href={`/artisan/${artisan.id}`}
-                        className="recommendation-action"
-                      >
-                        Visit Shop <FaChevronRight size={10} />
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-
-                {/* Show placeholder cards if no recommendations yet */}
-                {recommendedEvents.length === 0 &&
-                  recommendedArtisans.length === 0 && (
-                    <>
-                      {upcomingEvents.slice(0, 3).map((event, index) => (
-                        <div
-                          className="home-recommendation-card event-card"
-                          key={`fallback-event-${index}`}
-                        >
-                          <div className="recommendation-header">
-                            <div className="recommendation-match-reason">
-                              <Sparkles size={12} />
-                              <span>Popular event</span>
-                            </div>
-                          </div>
-                          <div className="recommendation-content">
-                            <div className="recommendation-labels">
-                              <span className="recommendation-badge recommendation-badge-event">
-                                <Calendar size={12} />
-                                <span>Event</span>
-                              </span>
-                              <span className="recommendation-type">
-                                {event.type}
-                              </span>
-                            </div>
-                            <h3 className="recommendation-title">
-                              {event.title}
-                            </h3>
-                            <p className="recommendation-date">{event.date}</p>
-                            <div className="recommendation-location">
-                              <MapPin size={12} />
-                              <span>{event.location}</span>
-                            </div>
-                            <button
-                              className="recommendation-action"
-                              onClick={() => handleViewDetails(event.title)}
-                            >
-                              View Event <FaChevronRight size={10} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                      {topArtisans.slice(0, 3).map((artisan) => (
-                        <div
-                          className="home-recommendation-card artisan-card"
-                          key={`fallback-artisan-${artisan.id}`}
-                        >
-                          <div className="recommendation-header">
-                            <div className="recommendation-match-reason">
-                              <Sparkles size={12} />
-                              <span>Popular artisan</span>
-                            </div>
-                          </div>
-                          <div className="recommendation-content">
-                            <div className="recommendation-labels">
-                              <span className="recommendation-badge recommendation-badge-artisan">
-                                <Store size={12} />
-                                <span>Shop</span>
-                              </span>
-                            </div>
-                            <div className="recommendation-artisan-header">
-                              <img
-                                src={artisan.avatar}
-                                alt={artisan.name}
-                                className="recommendation-avatar"
-                              />
-                              <div className="recommendation-artisan-info">
-                                <h3 className="recommendation-title">
-                                  {artisan.name}
-                                </h3>
-                                <p className="recommendation-artist">
-                                  {artisan.craftType}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="recommendation-tags">
-                              <span className="recommendation-tag craft-type">
-                                {artisan.craftType}
-                              </span>
-                            </div>
-                            <div className="recommendation-location">
-                              <MapPin size={12} />
-                              <span>{artisan.location}</span>
-                            </div>
-                            <div className="recommendation-meta">
-                              <div className="recommendation-rating">
-                                <FaStar className="star-icon" />
-                                <span>{artisan.rating.toFixed(1)}</span>
-                              </div>
-                              <span className="recommendation-products">
-                                {artisan.productsCount} products
-                              </span>
-                            </div>
-                            <Link
-                              href={`/artisan/${artisan.id}`}
-                              className="recommendation-action"
-                            >
-                              Visit Shop <FaChevronRight size={10} />
-                            </Link>
-                          </div>
-                        </div>
-                      ))}
-                    </>
-                  )}
-              </div>
-
-              {canScrollRecommendations.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      recommendationsRef.current,
-                      setCanScrollRecommendations
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* WHAT'S POPULAR THIS WEEK IN OLONGAPO */}
-        <section className="section bg-white">
-          <div className="home-section-header">
-            <div>
-              <h2>What's Popular This Week in Olongapo</h2>
-              <p
-                style={{
-                  fontSize: "0.9rem",
-                  color: "#666",
-                  marginTop: "0.35rem",
-                  marginBottom: "0",
-                  fontWeight: "400",
-                }}
-              >
-                See what locals and travelers are discovering and loving right
-                now.
-              </p>
-            </div>
-          </div>
-
-          {/* Trending Crafts Subsection */}
-          <div style={{ marginBottom: "3rem" }}>
-            <h3 className="popular-subsection-title">
-              <Flame
-                size={18}
-                style={{ marginRight: "0.5rem", color: "#af7928" }}
-              />
-              Trending Crafts
-              <span className="popular-subsection-subtitle">
-                Updated Weekly
-              </span>
-            </h3>
-            <div className="carousel-container">
-              {canScrollTrendingCrafts.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      trendingCraftsRef.current,
-                      setCanScrollTrendingCrafts
-                    )
-                  }
-                  aria-label="Previous"
-                >
-                  <FaChevronLeft />
-                </button>
-              )}
-              <div className="home-product-carousel" ref={trendingCraftsRef}>
-                {(dynamicTrendingCrafts.length > 0
-                  ? dynamicTrendingCrafts
-                  : trendingCrafts
-                ).map((product) => (
-                  <div
-                    className="home-product-card"
-                    key={product.id}
-                    onClick={() => handleProductClick(product)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="home-image-container">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="home-product-image"
-                      />
-                    </div>
-                    <div className="home-product-info">
-                      <div className="home-product-info-top">
-                        <h3 className="home-product-name">{product.name}</h3>
-                        <p className="home-product-artist">{product.artist}</p>
-                        <p className="home-product-location">
-                          <MapPin size={12} />
-                          {product.barangay}
-                        </p>
-                        <div className="home-product-tags">
-                          <span className="home-product-tag craft-type">
-                            {product.craftType}
-                          </span>
-                          <span className="home-product-tag category">
-                            {product.category}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="home-product-info-bottom">
-                        <p className="home-product-price">₱{product.price}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {canScrollTrendingCrafts.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      trendingCraftsRef.current,
-                      setCanScrollTrendingCrafts
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Trending Artisan Shops Subsection */}
-          <div style={{ marginBottom: "3rem" }}>
-            <h3 className="popular-subsection-title">
-              <Flame
-                size={18}
-                style={{ marginRight: "0.5rem", color: "#af7928" }}
-              />
-              Trending Artisan Shops
-              <span className="popular-subsection-subtitle">Most Visited</span>
-            </h3>
-            <div className="carousel-container">
-              {canScrollTrendingArtisans.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      trendingArtisansRef.current,
-                      setCanScrollTrendingArtisans
-                    )
-                  }
-                  aria-label="Previous"
-                >
-                  <FaChevronLeft />
-                </button>
-              )}
-              <div className="home-artisan-carousel" ref={trendingArtisansRef}>
-                {combinedTrendingArtisans.map((artisan: TrendingArtisanItem) => (
-                  <div className="home-artisan-card" key={artisan.id}>
-                    <Link
-                      href={`/artisan/${artisan.id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
+                    <FaChevronLeft />
+                  </button>
+                )}
+                <div className="home-product-carousel" ref={trendingCraftsRef}>
+                  {(dynamicTrendingCrafts.length > 0
+                    ? dynamicTrendingCrafts
+                    : trendingCrafts
+                  ).map((product) => (
+                    <div
+                      className="home-product-card"
+                      key={product.id}
+                      onClick={() => handleProductClick(product)}
+                      style={{ cursor: "pointer" }}
                     >
-                      <div className="home-artisan-profile">
+                      <div className="home-image-container">
                         <img
-                          src={artisan.avatar}
-                          alt={artisan.name}
-                          className="home-artisan-avatar"
+                          src={product.image}
+                          alt={product.name}
+                          className="home-product-image"
                         />
-                        <div className="home-artisan-info">
-                          <h3 className="home-artisan-name">{artisan.name}</h3>
-                          <span className="home-artisan-category">
-                            {artisan.craftType}
-                          </span>
-                          <p className="home-artisan-location">
-                            <MapPin size={12} />
-                            {artisan.location}
+                      </div>
+                      <div className="home-product-info">
+                        <div className="home-product-info-top">
+                          <h3 className="home-product-name">{product.name}</h3>
+                          <p className="home-product-artist">
+                            {product.artist}
                           </p>
-                          <div className="home-artisan-meta">
-                            <div className="home-artisan-rating">
-                              <FaStar className="star-icon" />
-                              <span>{artisan.rating}</span>
-                            </div>
-                            <span className="home-artisan-products">
-                              {artisan.productsCount} products
+                          <p className="home-product-location">
+                            <MapPin size={12} />
+                            {product.barangay}
+                          </p>
+                          <div className="home-product-tags">
+                            <span className="home-product-tag craft-type">
+                              {product.craftType}
+                            </span>
+                            <span className="home-product-tag category">
+                              {product.category}
                             </span>
                           </div>
                         </div>
-                      </div>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-              {canScrollTrendingArtisans.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      trendingArtisansRef.current,
-                      setCanScrollTrendingArtisans
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Trending Local Events Subsection */}
-          <div style={{ marginBottom: "3rem" }}>
-            <h3 className="popular-subsection-title">
-              <Flame
-                size={18}
-                style={{ marginRight: "0.5rem", color: "#af7928" }}
-              />
-              Trending Local Events
-              <span className="popular-subsection-subtitle">Top Picks</span>
-            </h3>
-            <div className="carousel-container">
-              {canScrollTrendingEvents.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      trendingEventsRef.current,
-                      setCanScrollTrendingEvents
-                    )
-                  }
-                  aria-label="Previous"
-                >
-                  <FaChevronLeft />
-                </button>
-              )}
-              <div className="home-event-carousel" ref={trendingEventsRef}>
-                {(dynamicTrendingEvents.length > 0
-                  ? dynamicTrendingEvents
-                  : trendingEvents
-                ).map((event) => (
-                  <div className="home-event-card" key={event.id}>
-                    <div className="home-event-header">
-                      <span className="home-event-type">{event.type}</span>
-                    </div>
-                    <div className="home-event-content">
-                      <h3 className="home-event-title">{event.title}</h3>
-                      <p className="home-event-date">{event.date}</p>
-                      <div className="home-event-location">
-                        <MapPin size={12} />
-                        <span>{event.location}</span>
-                      </div>
-                      <div className="home-event-actions">
-                        <button
-                          className="home-event-view-details"
-                          onClick={() => handleViewDetails(event.title)}
-                        >
-                          View Event Details <FaChevronRight size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {canScrollTrendingEvents.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      trendingEventsRef.current,
-                      setCanScrollTrendingEvents
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Newest Uploads Subsection */}
-          <div style={{ marginBottom: "3rem" }}>
-            <h3 className="popular-subsection-title">
-              <Flame
-                size={18}
-                style={{ marginRight: "0.5rem", color: "#af7928" }}
-              />
-              Newest Uploads
-              <span className="popular-subsection-subtitle">
-                Fresh Additions
-              </span>
-            </h3>
-            <div className="carousel-container">
-              {canScrollNewestUploads.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      newestUploadsRef.current,
-                      setCanScrollNewestUploads
-                    )
-                  }
-                  aria-label="Previous"
-                >
-                  <FaChevronLeft />
-                </button>
-              )}
-              <div className="home-product-carousel" ref={newestUploadsRef}>
-                {(dynamicNewestUploads.length > 0
-                  ? dynamicNewestUploads
-                  : newestUploads
-                ).map((product) => (
-                  <div
-                    className="home-product-card"
-                    key={product.id}
-                    onClick={() => handleProductClick(product)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="home-image-container">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="home-product-image"
-                      />
-                    </div>
-                    <div className="home-product-info">
-                      <div className="home-product-info-top">
-                        <h3 className="home-product-name">{product.name}</h3>
-                        <p className="home-product-artist">{product.artist}</p>
-                        <p className="home-product-location">
-                          <MapPin size={12} />
-                          {product.barangay}
-                        </p>
-                        <div className="home-product-tags">
-                          <span className="home-product-tag craft-type">
-                            {product.craftType}
-                          </span>
+                        <div className="home-product-info-bottom">
+                          <p className="home-product-price">₱{product.price}</p>
                         </div>
                       </div>
-                      <div className="home-product-info-bottom">
-                        <p className="home-product-price">₱{product.price}</p>
-                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              {canScrollNewestUploads.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      newestUploadsRef.current,
-                      setCanScrollNewestUploads
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Most Viewed by Travelers Subsection */}
-          <div>
-            <h3 className="popular-subsection-title">
-              <Flame
-                size={18}
-                style={{ marginRight: "0.5rem", color: "#af7928" }}
-              />
-              Most Viewed by Travelers This Week
-              <span className="popular-subsection-subtitle">
-                Based on Views
-              </span>
-            </h3>
-            <div className="carousel-container">
-              {canScrollTravelerViews.left && (
-                <button
-                  className="home-nav-button prev"
-                  onClick={() =>
-                    scroll(
-                      "left",
-                      travelerViewsRef.current,
-                      setCanScrollTravelerViews
-                    )
-                  }
-                  aria-label="Previous"
-                >
-                  <FaChevronLeft />
-                </button>
-              )}
-              <div className="home-product-carousel" ref={travelerViewsRef}>
-                {(dynamicMostViewed.length > 0
-                  ? dynamicMostViewed
-                  : viewedByTravelers
-                ).map((product) => (
-                  <div
-                    className="home-product-card"
-                    key={product.id}
-                    onClick={() => handleProductClick(product)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="home-image-container">
-                      <img
-                        src={product.image}
-                        alt={product.name}
-                        className="home-product-image"
-                      />
-                    </div>
-                    <div className="home-product-info">
-                      <div className="home-product-info-top">
-                        <h3 className="home-product-name">{product.name}</h3>
-                        <p className="home-product-artist">{product.artist}</p>
-                        <p className="home-product-location">
-                          <MapPin size={12} />
-                          {product.barangay}
-                        </p>
-                        <div className="home-product-tags">
-                          <span className="home-product-tag craft-type">
-                            {product.craftType}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="home-product-info-bottom">
-                        <p className="home-product-price">₱{product.price}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {canScrollTravelerViews.right && (
-                <button
-                  className="home-nav-button next"
-                  onClick={() =>
-                    scroll(
-                      "right",
-                      travelerViewsRef.current,
-                      setCanScrollTravelerViews
-                    )
-                  }
-                  aria-label="Next"
-                >
-                  <FaChevronRight />
-                </button>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* FEATURED PRODUCTS */}
-
-        {/* ARTISAN STORIES */}
-        <section className="section bg-alt">
-          <div className="home-section-header">
-            <div>
-              <h2>Stories Behind the Craft</h2>
-              <p
-                style={{
-                  fontSize: "0.9rem",
-                  color: "#666",
-                  marginTop: "0.35rem",
-                  marginBottom: "0",
-                  fontWeight: "400",
-                }}
-              >
-                Discover the journeys and traditions that shape every handmade
-                creation.
-              </p>
-            </div>
-            <Link href="/stories" className="home-see-all">
-              Read More <FaChevronRight className="home-arrow-icon" />
-            </Link>
-          </div>
-
-          <div className="carousel-container">
-            {canScrollStories.left && (
-              <button
-                className="home-nav-button prev"
-                onClick={() =>
-                  scroll("left", storiesRef.current, setCanScrollStories)
-                }
-                aria-label="Previous"
-              >
-                <FaChevronLeft />
-              </button>
-            )}
-
-            <div className="home-stories-carousel" ref={storiesRef}>
-              {orderedStories.map((story: StoryItem) => (
-                <div className="home-story-card" key={story.id}>
-                  <div className="home-story-image-container">
-                    <img
-                      src={story.image}
-                      alt={story.title}
-                      className="home-story-image"
-                    />
-                  </div>
-                  <div className="home-story-content">
-                    <h3 className="home-story-title">{story.title}</h3>
-                    <p className="home-story-artist">{story.artistName}</p>
-                    <p className="home-story-excerpt">
-                      {story.story.length > 200
-                        ? `${story.story.substring(0, 200)}...`
-                        : story.story}
-                    </p>
-                    <Link
-                      href={story.storeUrl || `/stories?storyId=${story.id}`}
-                      className="home-story-read-more"
-                    >
-                      Read More
-                    </Link>
-                  </div>
+                  ))}
                 </div>
-              ))}
+                {canScrollTrendingCrafts.right && (
+                  <button
+                    className="home-nav-button next"
+                    onClick={() =>
+                      scroll(
+                        "right",
+                        trendingCraftsRef.current,
+                        setCanScrollTrendingCrafts
+                      )
+                    }
+                    aria-label="Next"
+                  >
+                    <FaChevronRight />
+                  </button>
+                )}
+              </div>
             </div>
+          </section>
+        )}
 
-            {canScrollStories.right && (
-              <button
-                className="home-nav-button next"
-                onClick={() =>
-                  scroll("right", storiesRef.current, setCanScrollStories)
-                }
-                aria-label="Next"
-              >
-                <FaChevronRight />
-              </button>
-            )}
-          </div>
-        </section>
+        {/* GROWLOKAL CAROUSEL - SHOW FOR UNAUTHENTICATED USERS */}
+        {status !== "authenticated" && <GrowLokalCarousel />}
 
-        {/* EXPLORE OLONGAPO ON THE MAP */}
-        <section className="section bg-white">
-          <div className="home-section-header">
-            <div>
-              <h2>Explore Olongapo on the Map</h2>
-              <p
-                style={{
-                  fontSize: "0.9rem",
-                  color: "#666",
-                  marginTop: "0.35rem",
-                  marginBottom: "0",
-                  fontWeight: "400",
-                }}
-              >
-                Discover artisan shops, events, and cultural spots across
-                Olongapo.
-              </p>
-            </div>
-          </div>
-
-          <div
+        {/* PROUDLY OLONGAPO SECTION - CULTURAL PRIDE & COMMUNITY - HIDDEN FOR AUTHENTICATED USERS */}
+        {status !== "authenticated" && (
+          <section
+            data-proudly-container
             style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: "2rem",
-              padding: "0",
-              width: "100%",
+              backgroundColor: "#fafaf8",
+              padding: "4rem 2rem",
+              margin: "0",
+              borderTop: "1px solid rgba(175, 121, 40, 0.15)",
+              borderBottom: "1px solid rgba(175, 121, 40, 0.15)",
+              backgroundImage:
+                "linear-gradient(135deg, rgba(175, 121, 40, 0.02) 0%, rgba(255, 196, 107, 0.01) 100%)",
             }}
           >
-            <div className="map-preview-card">
-              <HomeMapPreview />
+            <div
+              data-proudly-grid
+              style={{
+                maxWidth: "1400px",
+                margin: "0 auto",
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "4rem",
+                alignItems: "center",
+              }}
+            >
+              {/* LEFT SIDE - TEXT CONTENT */}
+              <div data-proudly-text style={{ paddingRight: "2rem" }}>
+                {/* Heading */}
+                <h2
+                  data-proudly-heading
+                  style={{
+                    fontSize: "3rem",
+                    fontWeight: "700",
+                    color: "#2e3f36",
+                    margin: "0 0 1rem 0",
+                    fontFamily: "Poppins, sans-serif",
+                    letterSpacing: "-0.5px",
+                    background:
+                      "linear-gradient(135deg, #af7928 0%, #d4a574 100%)",
+                    backgroundClip: "text",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                    display: "inline-block",
+                  }}
+                >
+                  Why Support Olongapo Artisans?
+                </h2>
+
+                {/* Subheading */}
+                <p
+                  data-proudly-subheading
+                  style={{
+                    fontSize: "1rem",
+                    color: "#666",
+                    fontWeight: "500",
+                    marginBottom: "2rem",
+                    lineHeight: "1.6",
+                    fontFamily: "Poppins, sans-serif",
+                  }}
+                >
+                  Because every purchase keeps a local craft alive.
+                </p>
+
+                {/* Main description */}
+                <div
+                  style={{
+                    backgroundColor: "rgba(255, 255, 255, 0.6)",
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    borderLeft: "4px solid #af7928",
+                    marginBottom: "2rem",
+                    backdropFilter: "blur(10px)",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "1rem",
+                      lineHeight: "1.8",
+                      color: "#2e3f36",
+                      margin: "0 0 1rem 0",
+                      fontFamily: "Poppins, sans-serif",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Olongapo is more than a city—it's a living tapestry of
+                    cultural heritage, artistic spirit, and unwavering community
+                    pride. From our coastal roots and rich cultural traditions
+                    to our thriving creative scene, Olongapo's identity is woven
+                    into every craft, every stitch, and every handmade creation.
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.95rem",
+                      lineHeight: "1.7",
+                      color: "#555",
+                      margin: "0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    GrowLokal is committed to celebrating and uplifting these
+                    local artisans, supporting their livelihoods, and ensuring
+                    their stories and creations reach the world.
+                  </p>
+                </div>
+              </div>
+
+              {/* RIGHT SIDE - HIGHLIGHT CARDS */}
+              <div
+                data-proudly-cards
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1.5rem",
+                }}
+              >
+                {/* Card 1 - Cultural Heritage */}
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 12px rgba(175, 121, 40, 0.08)",
+                    border: "1px solid rgba(175, 121, 40, 0.1)",
+                    transition:
+                      "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "translateY(-8px) scale(1.02)";
+                    e.currentTarget.style.boxShadow =
+                      "0 12px 32px rgba(175, 121, 40, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 12px rgba(175, 121, 40, 0.08)";
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "2.5rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    🎨
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      color: "#2e3f36",
+                      margin: "0 0 0.75rem 0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Cultural Heritage
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      lineHeight: "1.5",
+                      margin: "0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Your support keeps weaving, pottery, woodwork, and
+                    embroidery traditions alive.
+                  </p>
+                </div>
+
+                {/* Card 2 - Community Spirit */}
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 12px rgba(175, 121, 40, 0.08)",
+                    border: "1px solid rgba(175, 121, 40, 0.1)",
+                    transition:
+                      "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "translateY(-8px) scale(1.02)";
+                    e.currentTarget.style.boxShadow =
+                      "0 12px 32px rgba(175, 121, 40, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 12px rgba(175, 121, 40, 0.08)";
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "2.5rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    🤝
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      color: "#2e3f36",
+                      margin: "0 0 0.75rem 0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Community Spirit
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      lineHeight: "1.5",
+                      margin: "0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Every purchase directly uplifts Olongapo families and small
+                    makers.
+                  </p>
+                </div>
+
+                {/* Card 3 - Coastal Roots */}
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 12px rgba(175, 121, 40, 0.08)",
+                    border: "1px solid rgba(175, 121, 40, 0.1)",
+                    transition:
+                      "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "translateY(-8px) scale(1.02)";
+                    e.currentTarget.style.boxShadow =
+                      "0 12px 32px rgba(175, 121, 40, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 12px rgba(175, 121, 40, 0.08)";
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "2.5rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    🌱
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      color: "#2e3f36",
+                      margin: "0 0 0.75rem 0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Sustainable & Authentic
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      lineHeight: "1.5",
+                      margin: "0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Handmade, eco-friendly, and crafted with care.
+                  </p>
+                </div>
+
+                {/* Card 4 - Creative Energy */}
+                <div
+                  style={{
+                    backgroundColor: "white",
+                    padding: "2rem",
+                    borderRadius: "12px",
+                    boxShadow: "0 2px 12px rgba(175, 121, 40, 0.08)",
+                    border: "1px solid rgba(175, 121, 40, 0.1)",
+                    transition:
+                      "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform =
+                      "translateY(-8px) scale(1.02)";
+                    e.currentTarget.style.boxShadow =
+                      "0 12px 32px rgba(175, 121, 40, 0.2)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0) scale(1)";
+                    e.currentTarget.style.boxShadow =
+                      "0 2px 12px rgba(175, 121, 40, 0.08)";
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "2.5rem",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    ✨
+                  </div>
+                  <h3
+                    style={{
+                      fontSize: "1.1rem",
+                      fontWeight: "600",
+                      color: "#2e3f36",
+                      margin: "0 0 0.75rem 0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Creative Energy
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      lineHeight: "1.5",
+                      margin: "0",
+                      fontFamily: "Poppins, sans-serif",
+                    }}
+                  >
+                    Where innovation meets tradition, and every craft tells a
+                    story.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* MOBILE RESPONSIVE STYLES */}
+            <style jsx>{`
+              @media (max-width: 1024px) {
+                [data-proudly-grid] {
+                  grid-template-columns: 1fr !important;
+                  gap: 3rem !important;
+                }
+                [data-proudly-text] {
+                  padding-right: 0 !important;
+                }
+                [data-proudly-cards] {
+                  grid-template-columns: 1fr 1fr !important;
+                }
+              }
+
+              @media (max-width: 768px) {
+                [data-proudly-heading] {
+                  font-size: 2.2rem !important;
+                }
+                [data-proudly-cards] {
+                  grid-template-columns: 1fr !important;
+                }
+                [data-proudly-text] {
+                  padding-right: 0 !important;
+                }
+              }
+
+              @media (max-width: 640px) {
+                [data-proudly-heading] {
+                  font-size: 1.8rem !important;
+                }
+                [data-proudly-subheading] {
+                  font-size: 0.95rem !important;
+                }
+                [data-proudly-container] {
+                  padding: 2rem 1rem !important;
+                }
+              }
+            `}</style>
+          </section>
+        )}
+
+        {/* WHY SUPPORT OLONGAPO ARTISANS? - TESTIMONIALS (UNAUTH ONLY) */}
+        {/* Unauthenticated testimonials section removed per request */}
+
+        {/* PERSONALIZED SECTIONS - ONLY SHOW FOR AUTHENTICATED USERS */}
+        {status === "authenticated" && (
+          <>
+            {/* RECOMMENDED FOR YOU */}
+            <section className="section bg-alt recommended-section">
+              <div className="home-section-header">
+                <div>
+                  <div className="section-title-with-icon">
+                    <Sparkles className="sparkle-icon" size={24} />
+                    <h2>Personalized Picks Just for You</h2>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      marginTop: "0.35rem",
+                      marginBottom: "0",
+                      fontWeight: "400",
+                    }}
+                  >
+                    Discover events, shops, and crafts that match your
+                    interests, browsing habits, and location.
+                  </p>
+                </div>
+                <span className="personalized-badge">Personalized</span>
+              </div>
+
+              {recommendationsLoading ? (
+                <div className="recommendations-loading">
+                  <div className="recommendations-skeleton">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="skeleton-card">
+                        <div className="skeleton-image"></div>
+                        <div className="skeleton-content">
+                          <div className="skeleton-line"></div>
+                          <div className="skeleton-line short"></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="carousel-container">
+                  {canScrollRecommendations.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          recommendationsRef.current,
+                          setCanScrollRecommendations
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+
+                  <div
+                    className="home-recommendations-carousel"
+                    ref={recommendationsRef}
+                  >
+                    {/* Recommended Events */}
+                    {recommendedEvents.slice(0, 3).map((event) => (
+                      <div
+                        className="home-recommendation-card event-card"
+                        key={`event-${event.id}`}
+                      >
+                        <div className="recommendation-header">
+                          <div className="recommendation-match-reason">
+                            <Sparkles size={12} />
+                            <span>{event.matchReason}</span>
+                          </div>
+                        </div>
+                        <div className="recommendation-content">
+                          <div className="recommendation-labels">
+                            <span className="recommendation-badge recommendation-badge-event">
+                              <Calendar size={12} />
+                              <span>Event</span>
+                            </span>
+                            <span className="recommendation-type">
+                              {event.type}
+                            </span>
+                          </div>
+                          <h3 className="recommendation-title">
+                            {event.title}
+                          </h3>
+                          <p className="recommendation-date">
+                            {event.dateText}
+                          </p>
+                          <div className="recommendation-location">
+                            <MapPin size={12} />
+                            <span>{event.location}</span>
+                          </div>
+                          {event.featuredArtisan && (
+                            <p className="recommendation-featured">
+                              Featuring: {event.featuredArtisan}
+                            </p>
+                          )}
+                          <button
+                            className="recommendation-action"
+                            onClick={() => handleViewDetails(event.title)}
+                          >
+                            View Event <FaChevronRight size={10} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Recommended Artisans */}
+                    {recommendedArtisans.slice(0, 3).map((artisan) => (
+                      <div
+                        className="home-recommendation-card artisan-card"
+                        key={`artisan-${artisan.id}`}
+                      >
+                        <div className="recommendation-header">
+                          <div className="recommendation-match-reason">
+                            <Sparkles size={12} />
+                            <span>{artisan.matchReason}</span>
+                          </div>
+                        </div>
+                        <div className="recommendation-content">
+                          <div className="recommendation-labels">
+                            <span className="recommendation-badge recommendation-badge-artisan">
+                              <Store size={12} />
+                              <span>Shop</span>
+                            </span>
+                          </div>
+                          <div className="recommendation-artisan-header">
+                            <img
+                              src={artisan.avatar}
+                              alt={artisan.name}
+                              className="recommendation-avatar"
+                            />
+                            <div className="recommendation-artisan-info">
+                              <h3 className="recommendation-title">
+                                {artisan.shopName}
+                              </h3>
+                              <p className="recommendation-artist">
+                                by {artisan.name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="recommendation-tags">
+                            <span className="recommendation-tag craft-type">
+                              {artisan.craftType}
+                            </span>
+                          </div>
+                          <div className="recommendation-location">
+                            <MapPin size={12} />
+                            <span>{artisan.location}</span>
+                          </div>
+                          <div className="recommendation-meta">
+                            <div className="recommendation-rating">
+                              <FaStar className="star-icon" />
+                              <span>{artisan.rating.toFixed(1)}</span>
+                            </div>
+                            <span className="recommendation-products">
+                              {artisan.productsCount} products
+                            </span>
+                          </div>
+                          <Link
+                            href={`/artisan/${artisan.id}`}
+                            className="recommendation-action"
+                          >
+                            Visit Shop <FaChevronRight size={10} />
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Show placeholder cards if no recommendations yet */}
+                    {recommendedEvents.length === 0 &&
+                      recommendedArtisans.length === 0 && (
+                        <>
+                          {upcomingEvents.slice(0, 3).map((event, index) => (
+                            <div
+                              className="home-recommendation-card event-card"
+                              key={`fallback-event-${index}`}
+                            >
+                              <div className="recommendation-header">
+                                <div className="recommendation-match-reason">
+                                  <Sparkles size={12} />
+                                  <span>Popular event</span>
+                                </div>
+                              </div>
+                              <div className="recommendation-content">
+                                <div className="recommendation-labels">
+                                  <span className="recommendation-badge recommendation-badge-event">
+                                    <Calendar size={12} />
+                                    <span>Event</span>
+                                  </span>
+                                  <span className="recommendation-type">
+                                    {event.type}
+                                  </span>
+                                </div>
+                                <h3 className="recommendation-title">
+                                  {event.title}
+                                </h3>
+                                <p className="recommendation-date">
+                                  {event.date}
+                                </p>
+                                <div className="recommendation-location">
+                                  <MapPin size={12} />
+                                  <span>{event.location}</span>
+                                </div>
+                                <button
+                                  className="recommendation-action"
+                                  onClick={() => handleViewDetails(event.title)}
+                                >
+                                  View Event <FaChevronRight size={10} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          {topArtisans.slice(0, 3).map((artisan) => (
+                            <div
+                              className="home-recommendation-card artisan-card"
+                              key={`fallback-artisan-${artisan.id}`}
+                            >
+                              <div className="recommendation-header">
+                                <div className="recommendation-match-reason">
+                                  <Sparkles size={12} />
+                                  <span>Popular artisan</span>
+                                </div>
+                              </div>
+                              <div className="recommendation-content">
+                                <div className="recommendation-labels">
+                                  <span className="recommendation-badge recommendation-badge-artisan">
+                                    <Store size={12} />
+                                    <span>Shop</span>
+                                  </span>
+                                </div>
+                                <div className="recommendation-artisan-header">
+                                  <img
+                                    src={artisan.avatar}
+                                    alt={artisan.name}
+                                    className="recommendation-avatar"
+                                  />
+                                  <div className="recommendation-artisan-info">
+                                    <h3 className="recommendation-title">
+                                      {artisan.name}
+                                    </h3>
+                                    <p className="recommendation-artist">
+                                      {artisan.craftType}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="recommendation-tags">
+                                  <span className="recommendation-tag craft-type">
+                                    {artisan.craftType}
+                                  </span>
+                                </div>
+                                <div className="recommendation-location">
+                                  <MapPin size={12} />
+                                  <span>{artisan.location}</span>
+                                </div>
+                                <div className="recommendation-meta">
+                                  <div className="recommendation-rating">
+                                    <FaStar className="star-icon" />
+                                    <span>{artisan.rating.toFixed(1)}</span>
+                                  </div>
+                                  <span className="recommendation-products">
+                                    {artisan.productsCount} products
+                                  </span>
+                                </div>
+                                <Link
+                                  href={`/artisan/${artisan.id}`}
+                                  className="recommendation-action"
+                                >
+                                  Visit Shop <FaChevronRight size={10} />
+                                </Link>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                  </div>
+
+                  {canScrollRecommendations.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          recommendationsRef.current,
+                          setCanScrollRecommendations
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+
+            {/* WHAT'S POPULAR THIS WEEK IN OLONGAPO */}
+            <section className="section bg-white">
+              <div className="home-section-header">
+                <div>
+                  <h2>What's Popular This Week in Olongapo</h2>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      marginTop: "0.35rem",
+                      marginBottom: "0",
+                      fontWeight: "400",
+                    }}
+                  >
+                    See what locals and travelers are discovering and loving
+                    right now.
+                  </p>
+                </div>
+              </div>
+
+              {/* Trending Crafts Subsection */}
+              <div style={{ marginBottom: "3rem" }}>
+                <h3 className="popular-subsection-title">
+                  <Flame
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#af7928" }}
+                  />
+                  Trending Crafts
+                  <span className="popular-subsection-subtitle">
+                    Updated Weekly
+                  </span>
+                </h3>
+                <div className="carousel-container">
+                  {canScrollTrendingCrafts.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          trendingCraftsRef.current,
+                          setCanScrollTrendingCrafts
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+                  <div
+                    className="home-product-carousel"
+                    ref={trendingCraftsRef}
+                  >
+                    {(dynamicTrendingCrafts.length > 0
+                      ? dynamicTrendingCrafts
+                      : trendingCrafts
+                    ).map((product) => (
+                      <div
+                        className="home-product-card"
+                        key={product.id}
+                        onClick={() => handleProductClick(product)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="home-image-container">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="home-product-image"
+                          />
+                        </div>
+                        <div className="home-product-info">
+                          <div className="home-product-info-top">
+                            <h3 className="home-product-name">
+                              {product.name}
+                            </h3>
+                            <p className="home-product-artist">
+                              {product.artist}
+                            </p>
+                            <p className="home-product-location">
+                              <MapPin size={12} />
+                              {product.barangay}
+                            </p>
+                            <div className="home-product-tags">
+                              <span className="home-product-tag craft-type">
+                                {product.craftType}
+                              </span>
+                              <span className="home-product-tag category">
+                                {product.category}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="home-product-info-bottom">
+                            <p className="home-product-price">
+                              ₱{product.price}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canScrollTrendingCrafts.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          trendingCraftsRef.current,
+                          setCanScrollTrendingCrafts
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Trending Artisan Shops Subsection */}
+              <div style={{ marginBottom: "3rem" }}>
+                <h3 className="popular-subsection-title">
+                  <Flame
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#af7928" }}
+                  />
+                  Trending Artisan Shops
+                  <span className="popular-subsection-subtitle">
+                    Most Visited
+                  </span>
+                </h3>
+                <div className="carousel-container">
+                  {canScrollTrendingArtisans.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          trendingArtisansRef.current,
+                          setCanScrollTrendingArtisans
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+                  <div
+                    className="home-artisan-carousel"
+                    ref={trendingArtisansRef}
+                  >
+                    {combinedTrendingArtisans.map(
+                      (artisan: TrendingArtisanItem) => (
+                        <div className="home-artisan-card" key={artisan.id}>
+                          <Link
+                            href={`/artisan/${artisan.id}`}
+                            style={{ textDecoration: "none", color: "inherit" }}
+                          >
+                            <div className="home-artisan-profile">
+                              <img
+                                src={artisan.avatar}
+                                alt={artisan.name}
+                                className="home-artisan-avatar"
+                              />
+                              <div className="home-artisan-info">
+                                <h3 className="home-artisan-name">
+                                  {artisan.name}
+                                </h3>
+                                <span className="home-artisan-category">
+                                  {artisan.craftType}
+                                </span>
+                                <p className="home-artisan-location">
+                                  <MapPin size={12} />
+                                  {artisan.location}
+                                </p>
+                                <div className="home-artisan-meta">
+                                  <div className="home-artisan-rating">
+                                    <FaStar className="star-icon" />
+                                    <span>{artisan.rating}</span>
+                                  </div>
+                                  <span className="home-artisan-products">
+                                    {artisan.productsCount} products
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </Link>
+                        </div>
+                      )
+                    )}
+                  </div>
+                  {canScrollTrendingArtisans.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          trendingArtisansRef.current,
+                          setCanScrollTrendingArtisans
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Trending Local Events Subsection */}
+              <div style={{ marginBottom: "3rem" }}>
+                <h3 className="popular-subsection-title">
+                  <Flame
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#af7928" }}
+                  />
+                  Trending Local Events
+                  <span className="popular-subsection-subtitle">Top Picks</span>
+                </h3>
+                <div className="carousel-container">
+                  {canScrollTrendingEvents.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          trendingEventsRef.current,
+                          setCanScrollTrendingEvents
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+                  <div className="home-event-carousel" ref={trendingEventsRef}>
+                    {(dynamicTrendingEvents.length > 0
+                      ? dynamicTrendingEvents
+                      : trendingEvents
+                    ).map((event) => (
+                      <div className="home-event-card" key={event.id}>
+                        <div className="home-event-header">
+                          <span className="home-event-type">{event.type}</span>
+                        </div>
+                        <div className="home-event-content">
+                          <h3 className="home-event-title">{event.title}</h3>
+                          <p className="home-event-date">{event.date}</p>
+                          <div className="home-event-location">
+                            <MapPin size={12} />
+                            <span>{event.location}</span>
+                          </div>
+                          <div className="home-event-actions">
+                            <button
+                              className="home-event-view-details"
+                              onClick={() => handleViewDetails(event.title)}
+                            >
+                              View Event Details <FaChevronRight size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canScrollTrendingEvents.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          trendingEventsRef.current,
+                          setCanScrollTrendingEvents
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Newest Uploads Subsection */}
+              <div style={{ marginBottom: "3rem" }}>
+                <h3 className="popular-subsection-title">
+                  <Flame
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#af7928" }}
+                  />
+                  Newest Uploads
+                  <span className="popular-subsection-subtitle">
+                    Fresh Additions
+                  </span>
+                </h3>
+                <div className="carousel-container">
+                  {canScrollNewestUploads.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          newestUploadsRef.current,
+                          setCanScrollNewestUploads
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+                  <div className="home-product-carousel" ref={newestUploadsRef}>
+                    {(dynamicNewestUploads.length > 0
+                      ? dynamicNewestUploads
+                      : newestUploads
+                    ).map((product) => (
+                      <div
+                        className="home-product-card"
+                        key={product.id}
+                        onClick={() => handleProductClick(product)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="home-image-container">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="home-product-image"
+                          />
+                        </div>
+                        <div className="home-product-info">
+                          <div className="home-product-info-top">
+                            <h3 className="home-product-name">
+                              {product.name}
+                            </h3>
+                            <p className="home-product-artist">
+                              {product.artist}
+                            </p>
+                            <p className="home-product-location">
+                              <MapPin size={12} />
+                              {product.barangay}
+                            </p>
+                            <div className="home-product-tags">
+                              <span className="home-product-tag craft-type">
+                                {product.craftType}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="home-product-info-bottom">
+                            <p className="home-product-price">
+                              ₱{product.price}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canScrollNewestUploads.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          newestUploadsRef.current,
+                          setCanScrollNewestUploads
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Most Viewed by Travelers Subsection */}
+              <div>
+                <h3 className="popular-subsection-title">
+                  <Flame
+                    size={18}
+                    style={{ marginRight: "0.5rem", color: "#af7928" }}
+                  />
+                  Most Viewed by Travelers This Week
+                  <span className="popular-subsection-subtitle">
+                    Based on Views
+                  </span>
+                </h3>
+                <div className="carousel-container">
+                  {canScrollTravelerViews.left && (
+                    <button
+                      className="home-nav-button prev"
+                      onClick={() =>
+                        scroll(
+                          "left",
+                          travelerViewsRef.current,
+                          setCanScrollTravelerViews
+                        )
+                      }
+                      aria-label="Previous"
+                    >
+                      <FaChevronLeft />
+                    </button>
+                  )}
+                  <div className="home-product-carousel" ref={travelerViewsRef}>
+                    {(dynamicMostViewed.length > 0
+                      ? dynamicMostViewed
+                      : viewedByTravelers
+                    ).map((product) => (
+                      <div
+                        className="home-product-card"
+                        key={product.id}
+                        onClick={() => handleProductClick(product)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className="home-image-container">
+                          <img
+                            src={product.image}
+                            alt={product.name}
+                            className="home-product-image"
+                          />
+                        </div>
+                        <div className="home-product-info">
+                          <div className="home-product-info-top">
+                            <h3 className="home-product-name">
+                              {product.name}
+                            </h3>
+                            <p className="home-product-artist">
+                              {product.artist}
+                            </p>
+                            <p className="home-product-location">
+                              <MapPin size={12} />
+                              {product.barangay}
+                            </p>
+                            <div className="home-product-tags">
+                              <span className="home-product-tag craft-type">
+                                {product.craftType}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="home-product-info-bottom">
+                            <p className="home-product-price">
+                              ₱{product.price}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {canScrollTravelerViews.right && (
+                    <button
+                      className="home-nav-button next"
+                      onClick={() =>
+                        scroll(
+                          "right",
+                          travelerViewsRef.current,
+                          setCanScrollTravelerViews
+                        )
+                      }
+                      aria-label="Next"
+                    >
+                      <FaChevronRight />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* HERO SECTION - NOW USING GROWLOKAL CAROUSEL (MOVED AFTER PERSONALIZED FOR AUTH USERS) */}
+            <GrowLokalCarousel />
+
+            {/* FEATURED PRODUCTS */}
+
+            {/* ARTISAN STORIES */}
+            <section className="section bg-alt">
+              <div className="home-section-header">
+                <div>
+                  <h2>Stories Behind the Craft</h2>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      marginTop: "0.35rem",
+                      marginBottom: "0",
+                      fontWeight: "400",
+                    }}
+                  >
+                    Discover the journeys and traditions that shape every
+                    handmade creation.
+                  </p>
+                </div>
+                <Link href="/stories" className="home-see-all">
+                  Read More <FaChevronRight className="home-arrow-icon" />
+                </Link>
+              </div>
+
+              <div className="carousel-container">
+                {canScrollStories.left && (
+                  <button
+                    className="home-nav-button prev"
+                    onClick={() =>
+                      scroll("left", storiesRef.current, setCanScrollStories)
+                    }
+                    aria-label="Previous"
+                  >
+                    <FaChevronLeft />
+                  </button>
+                )}
+
+                <div className="home-stories-carousel" ref={storiesRef}>
+                  {orderedStories.map((story: StoryItem) => (
+                    <div className="home-story-card" key={story.id}>
+                      <div className="home-story-image-container">
+                        <img
+                          src={story.image}
+                          alt={story.title}
+                          className="home-story-image"
+                        />
+                      </div>
+                      <div className="home-story-content">
+                        <h3 className="home-story-title">{story.title}</h3>
+                        <p className="home-story-artist">{story.artistName}</p>
+                        <p className="home-story-excerpt">
+                          {story.story.length > 200
+                            ? `${story.story.substring(0, 200)}...`
+                            : story.story}
+                        </p>
+                        <Link
+                          href={
+                            story.storeUrl || `/stories?storyId=${story.id}`
+                          }
+                          className="home-story-read-more"
+                        >
+                          Read More
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {canScrollStories.right && (
+                  <button
+                    className="home-nav-button next"
+                    onClick={() =>
+                      scroll("right", storiesRef.current, setCanScrollStories)
+                    }
+                    aria-label="Next"
+                  >
+                    <FaChevronRight />
+                  </button>
+                )}
+              </div>
+            </section>
+
+            {/* EXPLORE OLONGAPO ON THE MAP */}
+            <section className="section bg-white">
+              <div className="home-section-header">
+                <div>
+                  <h2>Explore Olongapo on the Map</h2>
+                  <p
+                    style={{
+                      fontSize: "0.9rem",
+                      color: "#666",
+                      marginTop: "0.35rem",
+                      marginBottom: "0",
+                      fontWeight: "400",
+                    }}
+                  >
+                    Discover artisan shops, events, and cultural spots across
+                    Olongapo.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: "2rem",
+                  padding: "0",
+                  width: "100%",
+                }}
+              >
+                <div className="map-preview-card">
+                  <HomeMapPreview />
+                </div>
+              </div>
+
+              <div style={{ textAlign: "center" }}>
+                <Link href="/map" className="map-preview-cta">
+                  <MapPin size={16} />
+                  View Full Map
+                </Link>
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* VISIT OLONGAPO - TOURISM CTA BANNER */}
+        <section
+          data-visit-olongapo-cta
+          style={{
+            position: "relative",
+            width: "100%",
+            minHeight: "450px",
+            height: "auto",
+            overflow: "hidden",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundImage: `url(/olongapocity.jpg)`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            backgroundAttachment: "fixed",
+            backgroundRepeat: "no-repeat",
+            marginBottom: "0",
+          }}
+        >
+          {/* White overlay with gold tint */}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(255, 255, 255, 0.75)",
+              pointerEvents: "none",
+            }}
+          />
+
+          {/* Content */}
+          <div
+            data-visit-content
+            style={{
+              position: "relative",
+              zIndex: 10,
+              textAlign: "center",
+              maxWidth: "900px",
+              padding: "3rem 2rem",
+              animation: "fadeIn 800ms ease-out",
+            }}
+          >
+            {/* Title */}
+            <h2
+              style={{
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "2rem",
+                fontWeight: 800,
+                margin: 0,
+                marginBottom: "1rem",
+                color: "#2e3f36",
+                textShadow: "0 2px 4px rgba(0,0,0,0.05)",
+              }}
+            >
+              Discover the City Behind the Crafts
+            </h2>
+
+            {/* Subtitle */}
+            <p
+              style={{
+                fontFamily: "Poppins, sans-serif",
+                fontSize: "1.3rem",
+                color: "#555",
+                margin: "0 0 2.5rem 0",
+                lineHeight: 1.6,
+                fontWeight: 500,
+              }}
+            >
+              Experience the Culture Behind Every Craft.
+            </p>
+
+            {/* CTA Buttons */}
+            <div
+              style={{
+                display: "flex",
+                gap: "1.5rem",
+                justifyContent: "center",
+                flexWrap: "wrap",
+                animation: "slideUp 700ms ease-out 200ms both",
+              }}
+            >
+              {/* Button 1: Explore Destinations */}
+              <Link
+                href="/map"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "16px 40px",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  letterSpacing: "0.02em",
+                  textDecoration: "none",
+                  background:
+                    "linear-gradient(135deg, #af7928 0%, #d4a574 100%)",
+                  color: "#fff",
+                  boxShadow: "0 8px 24px rgba(175, 121, 40, 0.3)",
+                  transition: "all 300ms ease",
+                  textTransform: "uppercase",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform =
+                    "scale(1.05) translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 36px rgba(175, 121, 40, 0.45)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1) translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 8px 24px rgba(175, 121, 40, 0.3)";
+                }}
+              >
+                Explore Destinations
+              </Link>
+
+              {/* Button 2: Local Events */}
+              <Link
+                href="/events"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "16px 40px",
+                  borderRadius: "10px",
+                  fontWeight: 700,
+                  fontSize: "1rem",
+                  letterSpacing: "0.02em",
+                  textDecoration: "none",
+                  background: "#fff",
+                  color: "#af7928",
+                  border: "2.5px solid #af7928",
+                  boxShadow: "0 4px 16px rgba(175, 121, 40, 0.15)",
+                  transition: "all 300ms ease",
+                  textTransform: "uppercase",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform =
+                    "scale(1.05) translateY(-2px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 12px 32px rgba(175, 121, 40, 0.25)";
+                  e.currentTarget.style.background = "rgba(175, 121, 40, 0.05)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1) translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 16px rgba(175, 121, 40, 0.15)";
+                  e.currentTarget.style.background = "#fff";
+                }}
+              >
+                Local Events
+              </Link>
             </div>
           </div>
 
-          <div style={{ textAlign: "center" }}>
-            <Link href="/map" className="map-preview-cta">
-              <MapPin size={16} />
-              View Full Map
-            </Link>
-          </div>
-        </section>
+          {/* Animations */}
+          <style jsx>{`
+            @keyframes fadeIn {
+              from {
+                opacity: 0;
+              }
+              to {
+                opacity: 1;
+              }
+            }
 
-        {/* CTA */}
-        <section className="section bg-alt full-width become-seller-cta">
-          <div className="cta-content">
-            <h2>Ready to Grow Your Craft Business?</h2>
-            <p>
-              Join Olongapo's artisan community. Showcase your creations and
-              reach new customers.
-            </p>
-            <Link href="/profile" className="btn-start">
-              <Store size={20} />
-              <span>Start Selling</span>
-            </Link>
-          </div>
+            @keyframes slideUp {
+              from {
+                opacity: 0;
+                transform: translateY(20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+
+            @media (max-width: 768px) {
+              [data-visit-content] {
+                padding: 2rem 1.5rem !important;
+              }
+
+              [data-visit-olongapo-cta] h2 {
+                font-size: 2rem !important;
+              }
+
+              [data-visit-content] p {
+                font-size: 1.1rem !important;
+              }
+
+              [data-visit-content] a {
+                padding: 14px 32px !important;
+                font-size: 0.9rem !important;
+              }
+            }
+
+            @media (max-width: 480px) {
+              [data-visit-content] {
+                padding: 2rem 1rem !important;
+              }
+
+              [data-visit-olongapo-cta] h2 {
+                font-size: 1.75rem !important;
+              }
+
+              [data-visit-content] p {
+                font-size: 1rem !important;
+                margin-bottom: 2rem !important;
+              }
+
+              [data-visit-content] div {
+                gap: 1rem !important;
+                flex-direction: column !important;
+              }
+
+              [data-visit-content] a {
+                width: 100% !important;
+              }
+            }
+          `}</style>
         </section>
       </main>
 
@@ -2047,3 +2783,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+// (reviews component removed)

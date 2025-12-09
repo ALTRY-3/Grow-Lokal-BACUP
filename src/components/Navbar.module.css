@@ -1117,6 +1117,44 @@
   font-size: var(--text-lg);
 }
 
+/* ========== UNAUTHENTICATED AUTH MENU ========== */
+.authMenuNav {
+  padding: var(--space-md) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.authMenuItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: inherit;
+}
+
+.authMenuItem:hover {
+  background: var(--light-gray);
+}
+
+.authMenuItem:hover .menuIcon {
+  color: var(--primary-gold);
+  transform: scale(1.1);
+}
+
+.authMenuItem:hover .menuArrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
 /* ========== RESPONSIVE DESIGN ========== */
 
 /* Tablets and below - show hamburger menu */

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   FaSearch,
   FaShoppingCart,
@@ -15,6 +17,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ProductModal from "@/components/ProductModal";
 import SearchBar from "@/components/SearchBar";
+import AlertDialog from "@/components/AlertDialog";
 import { SearchSuggestion, SearchResult } from "@/lib/useSearch";
 import { useCartStore } from "@/store/cartStore";
 import {
@@ -84,6 +87,8 @@ interface FilterState {
 }
 
 export default function Marketplace() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<LegacyProduct | null>(
     null
   );
@@ -959,6 +964,8 @@ export default function Marketplace() {
             onProductEngage={(p) =>
               trackProductView(p._id, p.category, p.craftType)
             }
+            session={session}
+            router={router}
           />
         </div>
       )}
@@ -972,6 +979,8 @@ export default function Marketplace() {
             onProductEngage={(p) =>
               trackProductView(p._id, p.category, p.craftType)
             }
+            session={session}
+            router={router}
           />
         </div>
       )}
@@ -985,6 +994,8 @@ export default function Marketplace() {
             onProductEngage={(p) =>
               trackProductView(p._id, p.category, p.craftType)
             }
+            session={session}
+            router={router}
           />
         </div>
       )}
@@ -998,6 +1009,8 @@ export default function Marketplace() {
             onProductEngage={(p) =>
               trackProductView(p._id, p.category, p.craftType)
             }
+            session={session}
+            router={router}
           />
         </div>
       )}
@@ -1011,6 +1024,8 @@ export default function Marketplace() {
             onProductEngage={(p) =>
               trackProductView(p._id, p.category, p.craftType)
             }
+            session={session}
+            router={router}
           />
         </div>
       )}
@@ -1137,20 +1152,49 @@ function Section({
   products,
   onProductClick,
   onProductEngage,
+  session,
+  router,
 }: {
   title: string;
   products: Product[];
   onProductClick: (product: Product) => void;
   onProductEngage?: (product: Product) => void;
+  session: any;
+  router: any;
 }) {
   const { addItem } = useCartStore();
   const [addingProduct, setAddingProduct] = useState<string | null>(null);
   const [successProduct, setSuccessProduct] = useState<string | null>(null);
   const [errorProduct, setErrorProduct] = useState<string | null>(null);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [alertState, setAlertState] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    type: "info" | "warning" | "error" | "success";
+  }>({
+    isOpen: false,
+    message: "",
+    type: "info",
+  });
 
   const handleAddToCart = async (product: Product, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
+
+    // Check if user is verified before allowing add to cart
+    if (!session?.user?.isEmailVerified) {
+      setAlertState({
+        isOpen: true,
+        title: "Email Verification Required",
+        message:
+          "Please verify your email to add items to cart. You will be redirected to the login page.",
+        type: "warning",
+      });
+      setTimeout(() => {
+        router.push("/login");
+      }, 1500);
+      return;
+    }
 
     // Treat add-to-cart as a strong interest signal for personalization
     onProductEngage?.(product);
@@ -1290,6 +1334,14 @@ function Section({
           </div>
         ))}
       </div>
+      <AlertDialog
+        isOpen={alertState.isOpen}
+        title={alertState.title}
+        message={alertState.message}
+        type={alertState.type}
+        onClose={() => setAlertState({ ...alertState, isOpen: false })}
+        autoCloseDuration={0}
+      />
     </>
   );
 }

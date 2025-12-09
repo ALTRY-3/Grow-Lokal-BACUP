@@ -28,6 +28,14 @@
   opacity: 1;
 }
 
+#whats-popular {
+border-top: 10px solid transparent;
+border-image: linear-gradient(135deg, #AF7928 0%, #FFE7B8 55%, #C98328 100%) 1;
+border-bottom: 10px solid transparent;
+border-image: linear-gradient(135deg, #AF7928 0%, #FFE7B8 55%, #C98328 100%) 1;
+
+}
+
 .section-inner {
   max-width: 1200px;
   margin: 0 auto;
