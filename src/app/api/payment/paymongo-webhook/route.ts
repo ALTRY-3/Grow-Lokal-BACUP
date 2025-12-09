@@ -7,7 +7,7 @@ const PAYMONGO_WEBHOOK_SECRET = process.env.PAYMONGO_WEBHOOK_SECRET || "";
 
 function verifySignature(rawBody: string, signatureHeader: string | null) {
   if (!PAYMONGO_WEBHOOK_SECRET || !signatureHeader) {
-    return true; // Skip verification when secret is not configured
+    return NextResponse.json({ success: true });
   }
 
   try {
