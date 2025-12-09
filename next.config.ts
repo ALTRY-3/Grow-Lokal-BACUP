@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
+
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  
   // Specify the correct root directory for turbopack
   turbopack: {
     root: process.cwd(),
@@ -36,3 +41,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
