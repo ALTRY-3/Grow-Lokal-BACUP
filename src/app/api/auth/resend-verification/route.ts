@@ -8,8 +8,13 @@ import crypto from 'crypto';
 export async function POST(req: NextRequest) {
   try {
     // Verify CSRF token
-    const csrfCheck = await requireCsrfToken(req);
-    if (csrfCheck) return csrfCheck;
+    const csrfValid = await requireCsrfToken(req);
+    if (!csrfValid) {
+      return NextResponse.json(
+        { error: 'Invalid CSRF token. Please refresh the page and try again.' },
+        { status: 403 }
+      );
+    }
 
     await connectDB();
 
