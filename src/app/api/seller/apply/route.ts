@@ -204,9 +204,8 @@ export async function POST(req: NextRequest) {
           isSeller: true, // Immediately set to true for instant My Shop access
           sellerProfile: {
             shopName,
-            businessType,
-            shopDescription,
             businessType: normalizedBusinessType,
+            shopDescription,
             pickupAddress,
             shopEmail,
             shopPhone,
