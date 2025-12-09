@@ -74,11 +74,80 @@ interface AnalyticsData {
 }
 
 const periodOptions = [
+  { label: "Today", value: "today" },
   { label: "Last 7 days", value: "7d" },
   { label: "Last 30 days", value: "30d" },
   { label: "Last 3 months", value: "3mo" },
   { label: "Last year", value: "1y" },
 ];
+
+const formatCurrency = (value: number) =>
+  `₱${value.toLocaleString(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })}`;
+
+const buildInsights = (data: AnalyticsData, periodLabel: string): string[] => {
+  const insights: string[] = [];
+  const { salesData, productStats, stockLevels, customerMetrics, shopRating } = data;
+
+  insights.push(
+    `During ${periodLabel}, your shop generated ${formatCurrency(
+      salesData.periodSales
+    )} across ${salesData.periodOrders} orders.`
+  );
+
+  if (salesData.salesGrowth >= 0) {
+    insights.push(
+      `Sales grew by ${salesData.salesGrowth.toFixed(1)}% versus the prior period, indicating healthy momentum.`
+    );
+  } else {
+    insights.push(
+      `Sales dipped by ${Math.abs(salesData.salesGrowth).toFixed(
+        1
+      )}% vs the prior period—consider targeted campaigns to re-accelerate.`
+    );
+  }
+
+  if (salesData.salesTrend.length) {
+    const bestDay = salesData.salesTrend.reduce((best, current) =>
+      current.sales > best.sales ? current : best
+    );
+    insights.push(
+      `Best-performing day: ${bestDay.date} with ${formatCurrency(bestDay.sales)} in revenue.`
+    );
+  }
+
+  if (productStats.topPerformer) {
+    insights.push(
+      `Top product: ${productStats.topPerformer.name} with ${productStats.topPerformer.sold} units sold.`
+    );
+  }
+
+  const lowStockTotal = stockLevels.lowStockItems.length;
+  const outOfStockTotal = stockLevels.outOfStockItems.length;
+  if (lowStockTotal || outOfStockTotal) {
+    insights.push(
+      `Inventory alerts: ${lowStockTotal} low-stock and ${outOfStockTotal} out-of-stock items need attention.`
+    );
+  }
+
+  if (customerMetrics.totalCustomers) {
+    insights.push(
+      `Customer base: ${customerMetrics.totalCustomers} customers with ${customerMetrics.retentionRate.toFixed(
+        1
+      )}% retention.`
+    );
+  }
+
+  if (shopRating.totalReviews) {
+    insights.push(
+      `Reputation: ${shopRating.averageRating.toFixed(1)}★ average rating from ${shopRating.totalReviews} reviews.`
+    );
+  }
+
+  return insights;
+};
 
 export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
@@ -168,61 +237,614 @@ export default function AnalyticsPage() {
     if (!analyticsData) return;
     
     const workbook = XLSX.utils.book_new();
-    
-    const salesSheet = XLSX.utils.json_to_sheet(analyticsData.salesData.salesTrend);
-    XLSX.utils.book_append_sheet(workbook, salesSheet, "Sales Trend");
-    
-    const productsSheet = XLSX.utils.json_to_sheet(analyticsData.productStats.topSellingProducts);
-    XLSX.utils.book_append_sheet(workbook, productsSheet, "Top Products");
-    
-    const summaryData = [{
-      "Total Sales": analyticsData.salesData.totalSales,
-      "Period Sales": analyticsData.salesData.periodSales,
-      "Total Orders": analyticsData.salesData.totalOrders,
-      "Average Order Value": analyticsData.salesData.averageSaleValue,
-      "Sales Growth": analyticsData.salesData.salesGrowth + "%",
-      "Total Customers": analyticsData.customerMetrics.totalCustomers,
-    }];
-    const summarySheet = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
-    
+    const periodLabel =
+      periodOptions.find((option) => option.value === selectedPeriod)?.label || selectedPeriod;
+    const insights = buildInsights(analyticsData, periodLabel);
+
+    const safeAppendSheet = (rows: Record<string, unknown>[], title: string) => {
+      const normalizedRows = rows.length ? rows : [{ Note: "No data available" }];
+      const worksheet = XLSX.utils.json_to_sheet(normalizedRows);
+      XLSX.utils.book_append_sheet(workbook, worksheet, title);
+    };
+
+    const { shopInfo, salesData, productStats, stockLevels, customerMetrics, shopRating } =
+      analyticsData;
+    const bestSalesDay = salesData.salesTrend.length
+      ? salesData.salesTrend.reduce((best, current) =>
+          current.sales > best.sales ? current : best
+        )
+      : null;
+    const busiestOrderDay = salesData.salesTrend.length
+      ? salesData.salesTrend.reduce((best, current) =>
+          current.orders > best.orders ? current : best
+        )
+      : null;
+    const lowStockTotal = stockLevels.lowStockItems.length;
+    const outOfStockTotal = stockLevels.outOfStockItems.length;
+    const avgOrdersPerCustomer = customerMetrics.totalCustomers
+      ? Number((salesData.periodOrders / customerMetrics.totalCustomers).toFixed(2))
+      : 0;
+
+    safeAppendSheet(
+      [
+        {
+          "Shop Name": shopInfo.name,
+          Owner: shopInfo.owner,
+          Location: shopInfo.location || "Not set",
+          Category: shopInfo.category || "Artisan",
+          "Craft Type": shopInfo.craftType || "Handmade",
+        },
+      ],
+      "Shop Overview"
+    );
+
+    safeAppendSheet(
+      [
+        {
+          Period: periodLabel,
+          "Report Generated": new Date().toLocaleString(),
+          "Total Sales": salesData.totalSales,
+          "Period Sales": salesData.periodSales,
+          "Total Orders": salesData.totalOrders,
+          "Period Orders": salesData.periodOrders,
+          "Average Order Value": salesData.averageSaleValue,
+          "Sales Growth (%)": salesData.salesGrowth,
+          "Best Sales Day": bestSalesDay
+            ? `${bestSalesDay.date} (${formatCurrency(bestSalesDay.sales)})`
+            : "Not available",
+          "Most Orders Day": busiestOrderDay
+            ? `${busiestOrderDay.date} (${busiestOrderDay.orders} orders)`
+            : "Not available",
+        },
+      ],
+      "Sales Summary"
+    );
+
+    safeAppendSheet(
+      [
+        { Metric: "Top Product", Value: productStats.topPerformer?.name || "Not available" },
+        {
+          Metric: "Top Product Units",
+          Value: productStats.topPerformer?.sold ?? "Not available",
+        },
+        {
+          Metric: "Low Stock Alerts",
+          Value: `${lowStockTotal} low / ${outOfStockTotal} out`,
+        },
+        {
+          Metric: "Avg Orders per Customer",
+          Value: avgOrdersPerCustomer || "Not available",
+        },
+        {
+          Metric: "Customer Mix",
+          Value: `${customerMetrics.newCustomers} new / ${customerMetrics.returningCustomers} returning`,
+        },
+        {
+          Metric: "Shop Rating",
+          Value: shopRating.totalReviews
+            ? `${shopRating.averageRating.toFixed(1)}★ (${shopRating.totalReviews} reviews)`
+            : "No reviews yet",
+        },
+      ],
+      "Performance Snapshot"
+    );
+
+    safeAppendSheet(
+      salesData.salesTrend.map((entry) => ({
+        Date: entry.date,
+        "Sales (PHP)": entry.sales,
+        Orders: entry.orders,
+      })),
+      "Sales Trend"
+    );
+
+    safeAppendSheet(
+      productStats.topSellingProducts.map((product, index) => ({
+        Rank: index + 1,
+        Product: product.name,
+        "Units Sold": product.sold,
+        Revenue: product.revenue ?? 0,
+      })),
+      "Top Products"
+    );
+
+    safeAppendSheet(
+      productStats.leastSellingProducts.map((product, index) => ({
+        Rank: index + 1,
+        Product: product.name,
+        "Units Sold": product.sold,
+      })),
+      "Watchlist Products"
+    );
+
+    const inventoryRows = [
+      ...stockLevels.lowStockItems.map((item) => ({
+        Product: item.name,
+        Status: "Low Stock",
+        Stock: item.stock,
+      })),
+      ...stockLevels.outOfStockItems.map((item) => ({
+        Product: item.name,
+        Status: "Out of Stock",
+        Stock: 0,
+      })),
+    ];
+    safeAppendSheet(inventoryRows, "Inventory Health");
+
+    safeAppendSheet(
+      [
+        {
+          "Total Customers": customerMetrics.totalCustomers,
+          "New Customers": customerMetrics.newCustomers,
+          "Returning Customers": customerMetrics.returningCustomers,
+          "Retention Rate (%)": customerMetrics.retentionRate,
+        },
+      ],
+      "Customer Metrics"
+    );
+
+    safeAppendSheet(
+      [
+        {
+          "Average Rating": shopRating.averageRating,
+          "Total Reviews": shopRating.totalReviews,
+        },
+      ],
+      "Ratings"
+    );
+
+    safeAppendSheet(
+      insights.map((text, index) => ({ "#": index + 1, Insight: text })),
+      "Insights"
+    );
+
     const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
     const today = new Date().toISOString().split("T")[0];
+    const sanitizedPeriod = periodLabel.replace(/\s+/g, "_").toLowerCase();
     saveAs(
       new Blob([wbout], { type: "application/octet-stream" }),
-      "analytics_" + today + ".xlsx"
+      `analytics_${sanitizedPeriod}_${today}.xlsx`
     );
   };
 
   const exportPDF = () => {
     if (!analyticsData) return;
     
-    const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text(analyticsData.shopInfo.name + " - Analytics Report", 10, 20);
-    doc.setFontSize(12);
-    doc.text("Generated: " + new Date().toLocaleDateString(), 10, 30);
-    const periodLabel = periodOptions.find(p => p.value === selectedPeriod)?.label || selectedPeriod;
-    doc.text("Period: " + periodLabel, 10, 40);
-    
-    doc.setFontSize(14);
-    doc.text("Sales Summary", 10, 55);
-    doc.setFontSize(11);
-    doc.text("Total Sales: P" + analyticsData.salesData.totalSales.toLocaleString(), 15, 65);
-    doc.text("Period Sales: P" + analyticsData.salesData.periodSales.toLocaleString(), 15, 73);
-    doc.text("Total Orders: " + analyticsData.salesData.totalOrders, 15, 81);
-    doc.text("Sales Growth: " + analyticsData.salesData.salesGrowth + "%", 15, 89);
-    
-    doc.setFontSize(14);
-    doc.text("Product Statistics", 10, 104);
-    doc.setFontSize(11);
-    doc.text("Total Products: " + analyticsData.productStats.totalProducts, 15, 114);
-    if (analyticsData.productStats.topPerformer) {
-      doc.text("Top Performer: " + analyticsData.productStats.topPerformer.name + " (" + analyticsData.productStats.topPerformer.sold + " sold)", 15, 122);
+    const doc = new jsPDF({ unit: "pt", format: "letter" });
+    const margin = 48;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let y = margin;
+
+    const colors = {
+      primary: [46, 63, 54] as const,
+      accent: [175, 121, 40] as const,
+      accentLight: [255, 196, 107] as const,
+      muted: [120, 120, 120] as const,
+      border: [229, 225, 220] as const,
+      card: [250, 248, 244] as const,
+      background: [247, 243, 236] as const,
+      page: [252, 250, 245] as const,
+    } as const;
+
+    const periodLabel =
+      periodOptions.find((option) => option.value === selectedPeriod)?.label || selectedPeriod;
+    const insights = buildInsights(analyticsData, periodLabel);
+
+    const headerHeight = 72;
+    const navBandHeight = 10;
+    const footerHeight = 48;
+    const contentTop = margin + headerHeight + navBandHeight;
+    const contentBottom = pageHeight - margin - footerHeight;
+
+    const setText = (color: readonly [number, number, number]) =>
+      doc.setTextColor(color[0], color[1], color[2]);
+
+    let currentPageNumber = 1;
+
+    const drawPageChrome = () => {
+      doc.setFillColor(colors.page[0], colors.page[1], colors.page[2]);
+      doc.rect(0, 0, pageWidth, pageHeight, "F");
+
+      doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.rect(0, 0, pageWidth, headerHeight, "F");
+
+      doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+      doc.rect(pageWidth - 160, 0, 160, headerHeight, "F");
+      doc.rect(0, headerHeight, pageWidth, navBandHeight, "F");
+      doc.setFillColor(colors.accentLight[0], colors.accentLight[1], colors.accentLight[2]);
+      doc.circle(pageWidth - 60, headerHeight / 2, 18, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Grow Lokal Analytics", margin, headerHeight / 2 - 4);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text("Seller Performance Report", margin, headerHeight / 2 + 12);
+      doc.text(`Period: ${periodLabel}`, margin, headerHeight / 2 + 26);
+
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.text("growlokal.ph", pageWidth - margin - 80, headerHeight / 2 + 12);
+
+      doc.setFillColor(colors.card[0], colors.card[1], colors.card[2]);
+      doc.rect(0, pageHeight - footerHeight, pageWidth, footerHeight, "F");
+      doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+      doc.rect(0, pageHeight - footerHeight, pageWidth, 4, "F");
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(9);
+      setText(colors.muted);
+      const footerY = pageHeight - footerHeight / 2 + 2;
+      doc.text("Generated via Grow Lokal Analytics", margin, footerY);
+      doc.text(`Page ${currentPageNumber}`, pageWidth - margin - 50, footerY);
+      setText(colors.primary);
+    };
+
+    const addNewPage = () => {
+      doc.addPage();
+      currentPageNumber += 1;
+      drawPageChrome();
+      y = contentTop;
+    };
+
+    const ensureSpace = (needed = 60) => {
+      if (y + needed > contentBottom) {
+        addNewPage();
+      }
+    };
+
+    drawPageChrome();
+    y = contentTop;
+
+    const drawHero = () => {
+      const heroHeight = 150;
+      const heroWidth = pageWidth - margin * 2;
+      ensureSpace(heroHeight + 24);
+
+      doc.setFillColor(colors.card[0], colors.card[1], colors.card[2]);
+      doc.roundedRect(margin, y, heroWidth, heroHeight, 16, 16, "F");
+      doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.roundedRect(margin, y, 10, heroHeight, 8, 8, "F");
+      doc.setFillColor(colors.accentLight[0], colors.accentLight[1], colors.accentLight[2]);
+      doc.circle(margin + heroWidth - 60, y + 36, 18, "F");
+      doc.circle(margin + heroWidth - 24, y + 92, 12, "F");
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      setText(colors.primary);
+      doc.text(`${analyticsData.shopInfo.name}`, margin + 28, y + 38);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      setText(colors.muted);
+      doc.text(`${analyticsData.shopInfo.category || "Artisan"} • ${
+        analyticsData.shopInfo.location || "Location not set"
+      }`, margin + 28, y + 56);
+      doc.text(`Owner: ${analyticsData.shopInfo.owner || "Not set"}`, margin + 28, y + 72);
+      doc.text(`Period: ${periodLabel}`, margin + 28, y + 88);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, margin + 28, y + 104);
+
+      const heroStats = [
+        { label: "Period Sales", value: formatCurrency(analyticsData.salesData.periodSales) },
+        { label: "Orders", value: `${analyticsData.salesData.totalOrders}` },
+        {
+          label: "Sales Growth",
+          value: `${analyticsData.salesData.salesGrowth >= 0 ? "+" : ""}${
+            analyticsData.salesData.salesGrowth.toFixed(1)
+          }%`,
+        },
+      ];
+
+      const chipWidth = 150;
+      const chipHeight = 42;
+      heroStats.forEach((chip, index) => {
+        const chipX = margin + 28 + index * (chipWidth + 12);
+        const chipY = y + heroHeight - chipHeight - 20;
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+        doc.roundedRect(chipX, chipY, chipWidth, chipHeight, 12, 12, "FD");
+        doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+        doc.rect(chipX, chipY, chipWidth, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        setText(colors.muted);
+        doc.text(chip.label.toUpperCase(), chipX + 12, chipY + 20);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        setText(colors.primary);
+        doc.text(chip.value, chipX + 12, chipY + 34);
+      });
+
+      y += heroHeight + 32;
+    };
+
+    const sectionTitle = (title: string, subtitle?: string) => {
+      ensureSpace(48);
+      const baseY = y;
+      doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+      doc.rect(margin, baseY, 44, 4, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      setText(colors.primary);
+      doc.text(title, margin, baseY + 18);
+      if (subtitle) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        setText(colors.muted);
+        doc.text(subtitle, margin, baseY + 34);
+        y = baseY + 44;
+      } else {
+        y = baseY + 28;
+      }
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      setText(colors.primary);
+    };
+
+    const drawDivider = () => {
+      ensureSpace(20);
+      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+      doc.setLineWidth(0.4);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 16;
+    };
+
+    const drawStatCards = (
+      cards: Array<{ title: string; value: string; hint?: string }>,
+      columns = 2
+    ) => {
+      const gutter = 18;
+      const cardWidth = (pageWidth - margin * 2 - gutter * (columns - 1)) / columns;
+      const cardHeight = 74;
+
+      for (let i = 0; i < cards.length; i++) {
+        if (i % columns === 0) {
+          ensureSpace(cardHeight + 16);
+        }
+
+        const card = cards[i];
+        const col = i % columns;
+        const x = margin + col * (cardWidth + gutter);
+        const yPos = y;
+
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+        doc.roundedRect(x, yPos, cardWidth, cardHeight, 12, 12, "FD");
+        doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+        doc.rect(x, yPos, cardWidth, 6, "F");
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        setText(colors.muted);
+        doc.text(card.title, x + 14, yPos + 18);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        setText(colors.primary);
+        doc.text(card.value, x + 14, yPos + 44);
+
+        if (card.hint) {
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(9);
+          setText(colors.muted);
+          doc.text(card.hint, x + 14, yPos + 60);
+        }
+
+        if (col === columns - 1 || i === cards.length - 1) {
+          y += cardHeight + 16;
+        }
+      }
+    };
+
+    const addKeyValueBlock = (items: Array<{ label: string; value: string }>) => {
+      items.forEach((item) => {
+        ensureSpace(18);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        setText(colors.muted);
+        doc.text(item.label.toUpperCase(), margin, y);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(12);
+        setText(colors.primary);
+        doc.text(item.value, margin, y + 14);
+        y += 28;
+      });
+    };
+
+    const addTable = (
+      title: string,
+      headers: string[],
+      rows: Array<Array<string | number>>
+    ) => {
+      const rowHeight = 22;
+      const tableWidth = pageWidth - margin * 2;
+
+      sectionTitle(title);
+      if (!rows.length) {
+        ensureSpace(18);
+        setText(colors.muted);
+        doc.text("No data available", margin, y);
+        y += 18;
+        return;
+      }
+
+      const totalHeight = rowHeight * (rows.length + 1) + 16;
+      ensureSpace(totalHeight + 12);
+      const startY = y;
+      doc.setFillColor(255, 255, 255);
+      doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+      doc.roundedRect(margin, startY, tableWidth, totalHeight, 12, 12, "FD");
+
+      doc.setFillColor(colors.primary[0], colors.primary[1], colors.primary[2]);
+      doc.rect(margin, startY, tableWidth, rowHeight, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.setTextColor(255, 255, 255);
+      headers.forEach((header, idx) => {
+        doc.text(header, margin + 14 + (tableWidth / headers.length) * idx, startY + 14);
+      });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      setText(colors.primary);
+      rows.forEach((row, rowIndex) => {
+        const rowY = startY + rowHeight * (rowIndex + 1);
+        const zebra = rowIndex % 2 === 0;
+        doc.setFillColor(
+          zebra ? colors.card[0] : 255,
+          zebra ? colors.card[1] : 255,
+          zebra ? colors.card[2] : 255
+        );
+        doc.rect(margin, rowY, tableWidth, rowHeight, "F");
+        row.forEach((value, colIndex) => {
+          doc.text(String(value), margin + 14 + (tableWidth / headers.length) * colIndex, rowY + 14);
+        });
+      });
+
+      y = startY + totalHeight + 18;
+    };
+
+    const addInsightList = (list: string[]) => {
+      if (!list.length) return;
+      sectionTitle(
+        "Key Insights & Recommendations",
+        "Auto-generated highlights for faster decision-making"
+      );
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      setText(colors.primary);
+      const blockWidth = pageWidth - margin * 2;
+      list.forEach((line, index) => {
+        const wrapped = doc.splitTextToSize(line, blockWidth - 48);
+        const blockHeight = wrapped.length * 14 + 22;
+        ensureSpace(blockHeight + 10);
+        doc.setFillColor(255, 255, 255);
+        doc.setDrawColor(colors.border[0], colors.border[1], colors.border[2]);
+        doc.roundedRect(margin, y, blockWidth, blockHeight, 12, 12, "FD");
+        doc.setFillColor(colors.accent[0], colors.accent[1], colors.accent[2]);
+        doc.circle(margin + 18, y + 18, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        setText(colors.muted);
+        doc.text(`#${index + 1}`, margin + 32, y + 12);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(11);
+        setText(colors.primary);
+        doc.text(wrapped, margin + 32, y + 26);
+        y += blockHeight + 10;
+      });
+    };
+
+    const { shopInfo, salesData, productStats, stockLevels, customerMetrics, shopRating } =
+      analyticsData;
+
+    drawHero();
+
+    sectionTitle("Sales Overview", "Key financial indicators for the selected period");
+    drawStatCards([
+      { title: "Total Sales", value: formatCurrency(salesData.totalSales) },
+      { title: "Period Sales", value: formatCurrency(salesData.periodSales) },
+      { title: "Total Orders", value: `${salesData.totalOrders}` },
+      { title: "Average Order Value", value: formatCurrency(salesData.averageSaleValue) },
+      {
+        title: "Sales Growth",
+        value: `${salesData.salesGrowth >= 0 ? "+" : ""}${salesData.salesGrowth.toFixed(1)}%`,
+        hint:
+          salesData.salesTrend.length > 1
+            ? "vs previous period"
+            : "Growth calculations need more data",
+      },
+    ]);
+
+    if (salesData.salesTrend.length) {
+      const bestDay = salesData.salesTrend.reduce((best, current) =>
+        current.sales > best.sales ? current : best
+      );
+      const busiestOrderDay = salesData.salesTrend.reduce((best, current) =>
+        current.orders > best.orders ? current : best
+      );
+      addKeyValueBlock([
+        { label: "Best Sales Day", value: `${bestDay.date} — ${formatCurrency(bestDay.sales)}` },
+        { label: "Most Orders Day", value: `${busiestOrderDay.date} — ${busiestOrderDay.orders} orders` },
+      ]);
     }
-    
+
+    drawDivider();
+
+    sectionTitle("Product Performance", "Top movers and watchlist products");
+    addKeyValueBlock([
+      { label: "Total Products", value: String(productStats.totalProducts) },
+      {
+        label: "Top Performer",
+        value: productStats.topPerformer
+          ? `${productStats.topPerformer.name} (${productStats.topPerformer.sold} sold)`
+          : "Not enough data",
+      },
+    ]);
+
+    addTable(
+      "Top Selling Products",
+      ["#", "Product", "Units", "Revenue"],
+      productStats.topSellingProducts.slice(0, 5).map((product, index) => [
+        index + 1,
+        product.name,
+        product.sold,
+        formatCurrency(product.revenue ?? 0),
+      ])
+    );
+
+    addTable(
+      "Products to Monitor",
+      ["#", "Product", "Units", "Note"],
+      productStats.leastSellingProducts.slice(0, 5).map((product, index) => [
+        index + 1,
+        product.name,
+        product.sold,
+        "Consider promotion",
+      ])
+    );
+
+    const inventoryRows = [
+      ...stockLevels.lowStockItems.map((item) => ["Low Stock", item.name, item.stock]),
+      ...stockLevels.outOfStockItems.map((item) => ["Out of Stock", item.name, 0]),
+    ];
+    addTable("Inventory Alerts", ["Status", "Product", "Qty"], inventoryRows);
+
+    drawDivider();
+
+    sectionTitle("Customer & Reputation", "Engagement and satisfaction indicators");
+    addKeyValueBlock([
+      { label: "Total Customers", value: String(customerMetrics.totalCustomers) },
+      {
+        label: "New vs Returning",
+        value: `${customerMetrics.newCustomers} new / ${customerMetrics.returningCustomers} returning`,
+      },
+      { label: "Retention Rate", value: `${customerMetrics.retentionRate.toFixed(1)}%` },
+      {
+        label: "Shop Rating",
+        value: shopRating.totalReviews
+          ? `${shopRating.averageRating.toFixed(1)} ★ from ${shopRating.totalReviews} reviews`
+          : "No reviews yet",
+      },
+    ]);
+
+    drawDivider();
+    addInsightList(insights);
+
+    drawDivider();
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    setText(colors.primary);
+    doc.text(
+      "Keep crafting better experiences — visit growlokal.ph/academy for playbooks.",
+      margin,
+      Math.min(y + 14, pageHeight - margin)
+    );
+
     const today = new Date().toISOString().split("T")[0];
-    doc.save("analytics_" + today + ".pdf");
+    const sanitizedPeriod = periodLabel.replace(/\s+/g, "_").toLowerCase();
+    doc.save(`analytics_${sanitizedPeriod}_${today}.pdf`);
   };
 
   if (loading) {
