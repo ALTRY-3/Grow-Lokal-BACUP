@@ -55,6 +55,8 @@ export interface IProduct extends Document {
   isActive: boolean;
   isFeatured: boolean;
   viewCount: number;
+  craftType?: string;
+  barangay?: string;
 }
 
 // Product Schema
@@ -264,12 +266,12 @@ ProductSchema.index({ isActive: 1, isFeatured: -1, averageRating: -1 });
 ProductSchema.index({ 'tags': 1 });
 
 // Virtual for display price (formatted)
-ProductSchema.virtual('displayPrice').get(function() {
+ProductSchema.virtual('displayPrice').get(function(this: IProduct) {
   return `₱${this.price.toFixed(2)}`;
 });
 
 // Virtual for discount percentage
-ProductSchema.virtual('discountPercentage').get(function() {
+ProductSchema.virtual('discountPercentage').get(function(this: IProduct) {
   if (this.originalPrice && this.originalPrice > this.price) {
     return Math.round(((this.originalPrice - this.price) / this.originalPrice) * 100);
   }
@@ -277,12 +279,12 @@ ProductSchema.virtual('discountPercentage').get(function() {
 });
 
 // Method to check if product is in stock
-ProductSchema.methods.isInStock = function(): boolean {
+ProductSchema.methods.isInStock = function(this: IProduct): boolean {
   return this.isAvailable && this.stock > 0;
 };
 
 // Method to decrement stock
-ProductSchema.methods.decrementStock = async function(quantity: number): Promise<boolean> {
+ProductSchema.methods.decrementStock = async function(this: IProduct, quantity: number): Promise<boolean> {
   if (this.stock >= quantity) {
     this.stock -= quantity;
     if (this.stock === 0) {
@@ -295,14 +297,14 @@ ProductSchema.methods.decrementStock = async function(quantity: number): Promise
 };
 
 // Method to increment stock
-ProductSchema.methods.incrementStock = async function(quantity: number): Promise<void> {
+ProductSchema.methods.incrementStock = async function(this: IProduct, quantity: number): Promise<void> {
   this.stock += quantity;
   this.isAvailable = true;
   await this.save();
 };
 
 // Method to update rating
-ProductSchema.methods.updateRating = async function(newRating: number): Promise<void> {
+ProductSchema.methods.updateRating = async function(this: IProduct, newRating: number): Promise<void> {
   const totalRating = this.averageRating * this.totalReviews + newRating;
   this.totalReviews += 1;
   this.averageRating = totalRating / this.totalReviews;
@@ -326,7 +328,7 @@ ProductSchema.statics.searchProducts = function(query: string) {
 };
 
 // Pre-save middleware to generate SKU if not provided
-ProductSchema.pre('save', async function(next) {
+ProductSchema.pre('save', async function(this: IProduct, next) {
   if (!this.sku) {
     // Generate SKU: CATEGORY-TIMESTAMP-RANDOM
     const categoryCode = this.category.substring(0, 3).toUpperCase();
@@ -345,7 +347,7 @@ ProductSchema.pre('save', async function(next) {
     ...this.name.toLowerCase().split(' '),
     this.category,
     this.artistName.toLowerCase(),
-    ...this.tags.map(tag => tag.toLowerCase()),
+    ...this.tags.map((tag: string) => tag.toLowerCase()),
   ];
   this.searchKeywords = [...new Set(keywords)]; // Remove duplicates
   
