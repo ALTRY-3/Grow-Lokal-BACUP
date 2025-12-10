@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -108,27 +108,35 @@ const STATUS_DISPLAY: Record<string, string> = {
 
 // Simplified flow: pending -> shipped (seller confirms) -> delivered (buyer confirms)
 const STATUS_WORKFLOW: Record<string, string | null> = {
-  pending: "shipped",      // Seller confirms -> moves to shipped (To Receive on buyer side)
-  confirmed: "shipped",    // Legacy support
-  processing: "shipped",   // Legacy support
-  shipped: null,           // Buyer must confirm receipt (via their profile)
+  pending: "shipped", // Seller confirms -> moves to shipped (To Receive on buyer side)
+  confirmed: "shipped", // Legacy support
+  processing: "shipped", // Legacy support
+  shipped: null, // Buyer must confirm receipt (via their profile)
   delivered: null,
   cancelled: null,
-  "To Ship": "Shipped",   // Same as pending -> shipped
-  Preparing: "Shipped",    // Legacy support
-  Shipped: null,           // Buyer confirms
+  "To Ship": "Shipped", // Same as pending -> shipped
+  Preparing: "Shipped", // Legacy support
+  Shipped: null, // Buyer confirms
   Completed: null,
   Cancelled: null,
 };
 
 export default function MyOrdersPage() {
+  return (
+    <Suspense fallback={<div>Loading orders...</div>}>
+      <MyOrdersContent />
+    </Suspense>
+  );
+}
+
+function MyOrdersContent() {
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Get initial tab from URL query parameter
   const initialTab = searchParams.get("tab") || "All";
   const [activeTab, setActiveTab] = useState<string>(initialTab);
@@ -141,31 +149,32 @@ export default function MyOrdersPage() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const response = await fetch("/api/seller/orders");
       const data = await response.json();
-      
+
       console.log("Seller orders response:", data);
-      
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to fetch orders");
       }
-      
+
       // API returns 'data' array, not 'orders'
       if (data.success && data.data) {
         // Transform the data to match our Order interface
         const transformedOrders = data.data.map((order: any) => ({
           orderId: order.orderId,
-          items: order.items?.map((item: any) => ({
-            productId: item.productId?.toString() || item.productId,
-            productName: item.name || item.productName,
-            productImage: item.image || item.productImage,
-            quantity: item.quantity,
-            price: item.price,
-            subtotal: item.price * item.quantity,
-            sellerId: item.artistId || item.sellerId,
-            sellerName: item.artistName || item.sellerName,
-          })) || [],
+          items:
+            order.items?.map((item: any) => ({
+              productId: item.productId?.toString() || item.productId,
+              productName: item.name || item.productName,
+              productImage: item.image || item.productImage,
+              quantity: item.quantity,
+              price: item.price,
+              subtotal: item.price * item.quantity,
+              sellerId: item.artistId || item.sellerId,
+              sellerName: item.artistName || item.sellerName,
+            })) || [],
           shippingAddress: order.shippingAddress || {},
           paymentDetails: {
             method: order.paymentMethod,
@@ -176,8 +185,10 @@ export default function MyOrdersPage() {
           shippingFee: 0,
           createdAt: order.createdAt,
           trackingNumber: order.trackingNumber,
-          buyerName: order.customer?.name || order.shippingAddress?.fullName || "N/A",
-          buyerEmail: order.customer?.email || order.shippingAddress?.email || "",
+          buyerName:
+            order.customer?.name || order.shippingAddress?.fullName || "N/A",
+          buyerEmail:
+            order.customer?.email || order.shippingAddress?.email || "",
         }));
         setOrders(transformedOrders);
       } else {
@@ -193,12 +204,12 @@ export default function MyOrdersPage() {
 
   useEffect(() => {
     if (sessionStatus === "loading") return;
-    
+
     if (!session) {
       router.push("/login");
       return;
     }
-    
+
     fetchOrders();
   }, [session, sessionStatus, router, fetchOrders]);
 
@@ -207,20 +218,28 @@ export default function MyOrdersPage() {
   const filteredOrders = orders.filter((order) => {
     const orderStatus = order.status?.toLowerCase() || "";
     const tabLower = activeTab.toLowerCase();
-    
-    const matchesTab = activeTab === "All" || 
+
+    const matchesTab =
+      activeTab === "All" ||
       orderStatus === tabLower ||
-      (tabLower === "to ship" && (orderStatus === "pending" || orderStatus === "confirmed" || orderStatus === "processing")) ||
-      (tabLower === "preparing" && (orderStatus === "confirmed" || orderStatus === "processing")) ||
+      (tabLower === "to ship" &&
+        (orderStatus === "pending" ||
+          orderStatus === "confirmed" ||
+          orderStatus === "processing")) ||
+      (tabLower === "preparing" &&
+        (orderStatus === "confirmed" || orderStatus === "processing")) ||
       (tabLower === "shipped" && orderStatus === "shipped") ||
       (tabLower === "completed" && orderStatus === "delivered");
-    
+
     const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = searchTerm === "" ||
+    const matchesSearch =
+      searchTerm === "" ||
       order.orderId?.toLowerCase().includes(searchLower) ||
       order.buyerName?.toLowerCase().includes(searchLower) ||
-      order.items?.some(item => item.productName?.toLowerCase().includes(searchLower));
-    
+      order.items?.some((item) =>
+        item.productName?.toLowerCase().includes(searchLower)
+      );
+
     return matchesTab && matchesSearch;
   });
 
@@ -228,10 +247,10 @@ export default function MyOrdersPage() {
   const handleStatusChange = async (orderId: string, currentStatus: string) => {
     const nextStatus = STATUS_WORKFLOW[currentStatus];
     if (!nextStatus) return;
-    
+
     try {
       setUpdatingStatus(true);
-      
+
       const response = await fetch("/api/seller/orders", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -240,23 +259,27 @@ export default function MyOrdersPage() {
           status: nextStatus, // API expects 'status' not 'newStatus'
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to update status");
       }
-      
+
       // Refresh orders
       await fetchOrders();
-      
+
       // Update selected order if modal is open
       if (selectedOrder && selectedOrder.orderId === orderId) {
-        setSelectedOrder(prev => prev ? { ...prev, status: nextStatus as OrderStatus } : null);
+        setSelectedOrder((prev) =>
+          prev ? { ...prev, status: nextStatus as OrderStatus } : null
+        );
       }
     } catch (err) {
       console.error("Error updating status:", err);
-      alert(err instanceof Error ? err.message : "Failed to update order status");
+      alert(
+        err instanceof Error ? err.message : "Failed to update order status"
+      );
     } finally {
       setUpdatingStatus(false);
     }
@@ -278,10 +301,15 @@ export default function MyOrdersPage() {
   const getTabCount = (tab: string) => {
     if (tab === "All") return orders.length;
     const tabLower = tab.toLowerCase();
-    return orders.filter(o => {
+    return orders.filter((o) => {
       const status = o.status?.toLowerCase() || "";
       // To Ship: orders waiting for seller confirmation
-      if (tabLower === "to ship") return status === "pending" || status === "confirmed" || status === "processing";
+      if (tabLower === "to ship")
+        return (
+          status === "pending" ||
+          status === "confirmed" ||
+          status === "processing"
+        );
       // Shipped: orders waiting for buyer confirmation
       if (tabLower === "shipped") return status === "shipped";
       // Completed: delivered orders
@@ -328,11 +356,24 @@ export default function MyOrdersPage() {
         <Navbar />
         <main className="myorders-main">
           <div className="myorders-error">
-            <i className={`fa-solid ${isNotSeller ? 'fa-store-slash' : 'fa-exclamation-circle'}`}></i>
-            <h3>{isNotSeller ? 'Seller Account Required' : 'Error Loading Orders'}</h3>
-            <p>{isNotSeller ? 'You need to register as a seller to access the orders dashboard.' : error}</p>
+            <i
+              className={`fa-solid ${
+                isNotSeller ? "fa-store-slash" : "fa-exclamation-circle"
+              }`}
+            ></i>
+            <h3>
+              {isNotSeller ? "Seller Account Required" : "Error Loading Orders"}
+            </h3>
+            <p>
+              {isNotSeller
+                ? "You need to register as a seller to access the orders dashboard."
+                : error}
+            </p>
             {isNotSeller ? (
-              <button onClick={() => router.push('/profile')} className="myorders-retry-btn">
+              <button
+                onClick={() => router.push("/profile")}
+                className="myorders-retry-btn"
+              >
                 Go to Profile
               </button>
             ) : (
@@ -402,12 +443,17 @@ export default function MyOrdersPage() {
                   {/* Product Image */}
                   <div className="myorders-card-image">
                     <img
-                      src={order.items[0]?.productImage || "https://placehold.co/100x100?text=Product"}
+                      src={
+                        order.items[0]?.productImage ||
+                        "https://placehold.co/100x100?text=Product"
+                      }
                       alt={order.items[0]?.productName || "Product"}
                       className="myorders-product-img"
                     />
                     {order.items.length > 1 && (
-                      <span className="myorders-more-items">+{order.items.length - 1} more</span>
+                      <span className="myorders-more-items">
+                        +{order.items.length - 1} more
+                      </span>
                     )}
                   </div>
 
@@ -415,22 +461,32 @@ export default function MyOrdersPage() {
                   <div className="myorders-card-info">
                     <h3 className="myorders-product-name">
                       {order.items[0]?.productName || "Unknown Product"}
-                      {order.items.length > 1 && ` (+${order.items.length - 1} items)`}
+                      {order.items.length > 1 &&
+                        ` (+${order.items.length - 1} items)`}
                     </h3>
                     <p className="myorders-info-row">
                       <span className="myorders-label">Qty:</span>
-                      <span>{order.items.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                      <span>
+                        {order.items.reduce(
+                          (sum, item) => sum + item.quantity,
+                          0
+                        )}
+                      </span>
                     </p>
                     <p className="myorders-info-row">
                       <span className="myorders-label">Buyer:</span>
-                      <span>{order.buyerName || order.shippingAddress?.fullName || "N/A"}</span>
+                      <span>
+                        {order.buyerName ||
+                          order.shippingAddress?.fullName ||
+                          "N/A"}
+                      </span>
                     </p>
                     <p className="myorders-info-row">
                       <span className="myorders-label">Address:</span>
                       <span>
-                        {order.shippingAddress ? 
-                          `${order.shippingAddress.address}, ${order.shippingAddress.city}` : 
-                          "N/A"}
+                        {order.shippingAddress
+                          ? `${order.shippingAddress.address}, ${order.shippingAddress.city}`
+                          : "N/A"}
                       </span>
                     </p>
                   </div>
@@ -447,7 +503,9 @@ export default function MyOrdersPage() {
                       >
                         {getStatusDisplay(order.status)}
                       </span>
-                      <p className="myorders-order-date">{formatDate(order.createdAt)}</p>
+                      <p className="myorders-order-date">
+                        {formatDate(order.createdAt)}
+                      </p>
                     </div>
                     <div className="myorders-price-section">
                       <p className="myorders-price">
@@ -493,9 +551,10 @@ export default function MyOrdersPage() {
             {/* Modal Header */}
             <div className="myorders-modal-header">
               <h2>Order {selectedOrder.orderId}</h2>
-              <button onClick={closeModal} className="myorders-modal-close">
-                
-              </button>
+              <button
+                onClick={closeModal}
+                className="myorders-modal-close"
+              ></button>
             </div>
 
             {/* Modal Body */}
@@ -506,18 +565,25 @@ export default function MyOrdersPage() {
                 {selectedOrder.items.map((item, index) => (
                   <div key={index} className="myorders-modal-product">
                     <img
-                      src={item.productImage || "https://placehold.co/100x100?text=Product"}
+                      src={
+                        item.productImage ||
+                        "https://placehold.co/100x100?text=Product"
+                      }
                       alt={item.productName}
                       className="myorders-modal-product-img"
                     />
                     <div className="myorders-modal-product-info">
-                      <p className="myorders-modal-product-name">{item.productName}</p>
+                      <p className="myorders-modal-product-name">
+                        {item.productName}
+                      </p>
                       <p className="myorders-modal-info-line">
                         <span className="myorders-modal-label">Quantity:</span>
                         {item.quantity}
                       </p>
                       <p className="myorders-modal-info-line">
-                        <span className="myorders-modal-label">Unit Price:</span>
+                        <span className="myorders-modal-label">
+                          Unit Price:
+                        </span>
                         {item.price?.toLocaleString() || "0"}
                       </p>
                       <p className="myorders-modal-info-line">
@@ -544,11 +610,15 @@ export default function MyOrdersPage() {
                 <h3>Buyer Information</h3>
                 <p className="myorders-modal-info-line">
                   <span className="myorders-modal-label">Name:</span>
-                  {selectedOrder.buyerName || selectedOrder.shippingAddress?.fullName || "N/A"}
+                  {selectedOrder.buyerName ||
+                    selectedOrder.shippingAddress?.fullName ||
+                    "N/A"}
                 </p>
                 <p className="myorders-modal-info-line">
                   <span className="myorders-modal-label">Email:</span>
-                  {selectedOrder.buyerEmail || selectedOrder.shippingAddress?.email || "N/A"}
+                  {selectedOrder.buyerEmail ||
+                    selectedOrder.shippingAddress?.email ||
+                    "N/A"}
                 </p>
                 <p className="myorders-modal-info-line">
                   <span className="myorders-modal-label">Phone:</span>
@@ -556,9 +626,9 @@ export default function MyOrdersPage() {
                 </p>
                 <p className="myorders-modal-info-line">
                   <span className="myorders-modal-label">Address:</span>
-                  {selectedOrder.shippingAddress ? 
-                    `${selectedOrder.shippingAddress.address}, ${selectedOrder.shippingAddress.city}, ${selectedOrder.shippingAddress.province} ${selectedOrder.shippingAddress.postalCode}` :
-                    "N/A"}
+                  {selectedOrder.shippingAddress
+                    ? `${selectedOrder.shippingAddress.address}, ${selectedOrder.shippingAddress.city}, ${selectedOrder.shippingAddress.province} ${selectedOrder.shippingAddress.postalCode}`
+                    : "N/A"}
                 </p>
               </div>
 
@@ -568,19 +638,36 @@ export default function MyOrdersPage() {
                 <div className="myorders-payment-breakdown">
                   <div className="myorders-payment-row">
                     <span>Subtotal:</span>
-                    <span>{(selectedOrder.totalAmount - (selectedOrder.shippingFee || 0)).toLocaleString()}</span>
+                    <span>
+                      {(
+                        selectedOrder.totalAmount -
+                        (selectedOrder.shippingFee || 0)
+                      ).toLocaleString()}
+                    </span>
                   </div>
                   <div className="myorders-payment-row">
                     <span>Shipping:</span>
-                    <span>{selectedOrder.shippingFee?.toLocaleString() || "0"}</span>
+                    <span>
+                      {selectedOrder.shippingFee?.toLocaleString() || "0"}
+                    </span>
                   </div>
                   <div className="myorders-payment-row total">
                     <span>Total:</span>
-                    <span>{selectedOrder.totalAmount?.toLocaleString() || "0"}</span>
+                    <span>
+                      {selectedOrder.totalAmount?.toLocaleString() || "0"}
+                    </span>
                   </div>
                   <p className="myorders-payment-method">
-                    Payment Method: {selectedOrder.paymentDetails?.method || "N/A"} |{" "}
-                    <span style={{ color: selectedOrder.paymentDetails?.status === "paid" ? "#4CAF50" : "#FFC107" }}>
+                    Payment Method:{" "}
+                    {selectedOrder.paymentDetails?.method || "N/A"} |{" "}
+                    <span
+                      style={{
+                        color:
+                          selectedOrder.paymentDetails?.status === "paid"
+                            ? "#4CAF50"
+                            : "#FFC107",
+                      }}
+                    >
                       {selectedOrder.paymentDetails?.status || "Pending"}
                     </span>
                   </p>
@@ -608,27 +695,41 @@ export default function MyOrdersPage() {
               <div className="myorders-modal-buttons">
                 {STATUS_WORKFLOW[selectedOrder.status] && (
                   <button
-                    onClick={() => handleStatusChange(selectedOrder.orderId, selectedOrder.status)}
+                    onClick={() =>
+                      handleStatusChange(
+                        selectedOrder.orderId,
+                        selectedOrder.status
+                      )
+                    }
                     disabled={updatingStatus}
                     className="myorders-modal-btn primary full-width"
                   >
-                    {updatingStatus ? "Updating..." : (
+                    {updatingStatus ? (
+                      "Updating..."
+                    ) : (
                       <>
-                        {(selectedOrder.status === "pending" || selectedOrder.status === "To Ship") && "Confirm & Ship Order"}
-                        {(selectedOrder.status === "confirmed" || selectedOrder.status === "processing" || selectedOrder.status === "Preparing") && "Mark as Shipped"}
+                        {(selectedOrder.status === "pending" ||
+                          selectedOrder.status === "To Ship") &&
+                          "Confirm & Ship Order"}
+                        {(selectedOrder.status === "confirmed" ||
+                          selectedOrder.status === "processing" ||
+                          selectedOrder.status === "Preparing") &&
+                          "Mark as Shipped"}
                       </>
                     )}
                   </button>
                 )}
 
-                {(selectedOrder.status === "shipped" || selectedOrder.status === "Shipped") && (
+                {(selectedOrder.status === "shipped" ||
+                  selectedOrder.status === "Shipped") && (
                   <div className="myorders-modal-info-message">
                     <i className="fa-solid fa-info-circle"></i>
                     Waiting for buyer to confirm receipt
                   </div>
                 )}
 
-                {(selectedOrder.status === "delivered" || selectedOrder.status === "Completed") && (
+                {(selectedOrder.status === "delivered" ||
+                  selectedOrder.status === "Completed") && (
                   <button
                     disabled
                     className="myorders-modal-btn disabled full-width"

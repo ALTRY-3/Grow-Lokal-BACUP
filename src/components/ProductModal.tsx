@@ -258,7 +258,8 @@ export default function ProductModal({
           );
           setCanReview(payload?.data?.canReview === true);
 
-          reviewsCacheRef.current[product.productId] = {
+          const productKey = product.productId || product.name;
+          reviewsCacheRef.current[productKey] = {
             reviews,
             average:
               typeof payload?.data?.averageRating === "number"
@@ -407,10 +408,7 @@ export default function ProductModal({
   }, [product.productId]);
 
   // Helper to get reviewer avatar (prefer backend-provided avatarUrl)
-  const getReviewerAvatar = (
-    name: string,
-    avatarUrl?: string | null
-  ) =>
+  const getReviewerAvatar = (name: string, avatarUrl?: string | null) =>
     avatarUrl && avatarUrl.trim()
       ? avatarUrl
       : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
@@ -688,7 +686,8 @@ export default function ProductModal({
   };
 
   const maxStock = product.maxStock || 99;
-  const madeInBarangay = sellerInfo?.location || product.barangay || "Unspecified";
+  const madeInBarangay =
+    sellerInfo?.location || product.barangay || "Unspecified";
 
   return (
     <div className="modal-overlay">
@@ -964,7 +963,9 @@ export default function ProductModal({
                       className="reviewer-avatar"
                     />
                     <div className="reviewer-details">
-                      <h4 className="reviewer-name">{reviewList[0].userName}</h4>
+                      <h4 className="reviewer-name">
+                        {reviewList[0].userName}
+                      </h4>
                       <div className="review-rating">
                         {[...Array(5)].map((_, index) => (
                           <FaStar
@@ -998,10 +999,10 @@ export default function ProductModal({
                       <div className="review-card" key={review.id}>
                         <div className="reviewer-info">
                           <img
-                                src={getReviewerAvatar(
-                                  review.userName,
-                                  (review as any).avatarUrl
-                                )}
+                            src={getReviewerAvatar(
+                              review.userName,
+                              (review as any).avatarUrl
+                            )}
                             alt={review.userName}
                             className="reviewer-avatar"
                           />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -10,6 +10,14 @@ import type { PasswordStrength } from "@/lib/passwordPolicy";
 import "./reset-password.css";
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ResetPasswordPageContent />
+    </Suspense>
+  );
+}
+
+function ResetPasswordPageContent() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,31 +26,34 @@ export default function ResetPasswordPage() {
   const [message, setMessage] = useState("");
   const [isSuccess, setIsSuccess] = useState(false);
   const [isValidToken, setIsValidToken] = useState(true);
-  const [tokenState, setTokenState] = useState<'valid' | 'invalid' | 'expired' | 'used'>('valid');
-  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength | null>(null);
+  const [tokenState, setTokenState] = useState<
+    "valid" | "invalid" | "expired" | "used"
+  >("valid");
+  const [passwordStrength, setPasswordStrength] =
+    useState<PasswordStrength | null>(null);
   const [isPasswordBreached, setIsPasswordBreached] = useState(false);
-  
+
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = searchParams?.get('token');
-  const email = searchParams?.get('email');
+  const token = searchParams?.get("token");
+  const email = searchParams?.get("email");
   const { csrfToken, loading: csrfLoading } = useCsrfToken();
 
   useEffect(() => {
     if (!token || !email) {
       setIsValidToken(false);
-      setTokenState('invalid');
-      setMessage('Invalid reset link. Please request a new password reset.');
+      setTokenState("invalid");
+      setMessage("Invalid reset link. Please request a new password reset.");
     }
   }, [token, email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isValidToken) {
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setMessage("Passwords do not match!");
       setIsSuccess(false);
@@ -58,7 +69,9 @@ export default function ResetPasswordPage() {
 
     // Warn about breached passwords
     if (isPasswordBreached) {
-      setMessage("This password has been found in a data breach. Please choose a different password.");
+      setMessage(
+        "This password has been found in a data breach. Please choose a different password."
+      );
       setIsSuccess(false);
       return;
     }
@@ -67,47 +80,50 @@ export default function ResetPasswordPage() {
     setMessage("");
 
     try {
-      const response = await fetch('/api/auth/reset-password', getCsrfHeaders(csrfToken, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          token, 
-          email, 
-          newPassword: password 
-        }),
-      }));
+      const response = await fetch(
+        "/api/auth/reset-password",
+        getCsrfHeaders(csrfToken, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            token,
+            email,
+            newPassword: password,
+          }),
+        })
+      );
 
       const data = await response.json();
 
       if (data.success) {
         setMessage(data.message);
         setIsSuccess(true);
-        setTokenState('valid');
+        setTokenState("valid");
         // Redirect to login after 4 seconds
         setTimeout(() => {
-          router.push('/login?reset=true');
+          router.push("/login?reset=true");
         }, 4000);
       } else {
-        setMessage(data.message || 'An error occurred. Please try again.');
+        setMessage(data.message || "An error occurred. Please try again.");
         setIsSuccess(false);
-        
+
         // Set token state based on error code
-        if (data.errorCode === 'TOKEN_EXPIRED') {
-          setTokenState('expired');
+        if (data.errorCode === "TOKEN_EXPIRED") {
+          setTokenState("expired");
           setIsValidToken(false);
-        } else if (data.errorCode === 'TOKEN_USED') {
-          setTokenState('used');
+        } else if (data.errorCode === "TOKEN_USED") {
+          setTokenState("used");
           setIsValidToken(false);
-        } else if (data.errorCode === 'INVALID_TOKEN') {
-          setTokenState('invalid');
+        } else if (data.errorCode === "INVALID_TOKEN") {
+          setTokenState("invalid");
           setIsValidToken(false);
         }
       }
     } catch (error) {
-      console.error('Reset password error:', error);
-      setMessage('Network error. Please check your connection and try again.');
+      console.error("Reset password error:", error);
+      setMessage("Network error. Please check your connection and try again.");
       setIsSuccess(false);
     } finally {
       setIsLoading(false);
@@ -127,7 +143,7 @@ export default function ResetPasswordPage() {
             sizes="60px"
           />
         </div>
-        
+
         <div className="left-content">
           <div className="logo-section">
             <div className="logo-icon">
@@ -145,7 +161,8 @@ export default function ResetPasswordPage() {
           <div className="hero-section">
             <h1 className="hero-title">Secure Your Account</h1>
             <p className="hero-subtitle">
-              Create a strong, unique password to protect your account and personal information.
+              Create a strong, unique password to protect your account and
+              personal information.
             </p>
 
             <div className="hero-image">
@@ -197,13 +214,22 @@ export default function ResetPasswordPage() {
             </div>
             <h2>Reset Password</h2>
             <p>
-              Create a strong password with at least 8 characters including uppercase, lowercase, and numbers.
+              Create a strong password with at least 8 characters including
+              uppercase, lowercase, and numbers.
             </p>
           </div>
 
           {message && (
-            <div className={`message ${isSuccess ? 'success-message' : 'error-message'}`}>
-              <i className={`fas ${isSuccess ? 'fa-check-circle' : 'fa-exclamation-triangle'}`}></i>
+            <div
+              className={`message ${
+                isSuccess ? "success-message" : "error-message"
+              }`}
+            >
+              <i
+                className={`fas ${
+                  isSuccess ? "fa-check-circle" : "fa-exclamation-triangle"
+                }`}
+              ></i>
               {message}
               {isSuccess && (
                 <div className="redirect-timer">
@@ -216,29 +242,51 @@ export default function ResetPasswordPage() {
           {!isValidToken ? (
             <div className="invalid-token">
               <div className="invalid-icon">
-                <i className={`fas ${
-                  tokenState === 'expired' ? 'fa-clock' : 
-                  tokenState === 'used' ? 'fa-check-circle' : 
-                  'fa-times-circle'
-                }`}></i>
+                <i
+                  className={`fas ${
+                    tokenState === "expired"
+                      ? "fa-clock"
+                      : tokenState === "used"
+                      ? "fa-check-circle"
+                      : "fa-times-circle"
+                  }`}
+                ></i>
               </div>
               <p>
-                {tokenState === 'expired' && 'This password reset link has expired. Links are valid for 1 hour.'}
-                {tokenState === 'used' && 'This password reset link has already been used.'}
-                {tokenState === 'invalid' && 'This password reset link is invalid.'}
+                {tokenState === "expired" &&
+                  "This password reset link has expired. Links are valid for 1 hour."}
+                {tokenState === "used" &&
+                  "This password reset link has already been used."}
+                {tokenState === "invalid" &&
+                  "This password reset link is invalid."}
               </p>
-              <div style={{ marginTop: '15px', fontSize: '14px', color: '#666' }}>
-                {tokenState === 'expired' && (
-                  <p>Password reset links expire after 1 hour for security reasons.</p>
+              <div
+                style={{ marginTop: "15px", fontSize: "14px", color: "#666" }}
+              >
+                {tokenState === "expired" && (
+                  <p>
+                    Password reset links expire after 1 hour for security
+                    reasons.
+                  </p>
                 )}
-                {tokenState === 'used' && (
-                  <p>Each reset link can only be used once. If you need to reset your password again, please request a new link.</p>
+                {tokenState === "used" && (
+                  <p>
+                    Each reset link can only be used once. If you need to reset
+                    your password again, please request a new link.
+                  </p>
                 )}
-                {tokenState === 'invalid' && (
-                  <p>The link may be corrupted or incomplete. Please copy and paste the entire link from your email.</p>
+                {tokenState === "invalid" && (
+                  <p>
+                    The link may be corrupted or incomplete. Please copy and
+                    paste the entire link from your email.
+                  </p>
                 )}
               </div>
-              <Link href="/forgot-password" className="retry-link" style={{ marginTop: '20px', display: 'inline-block' }}>
+              <Link
+                href="/forgot-password"
+                className="retry-link"
+                style={{ marginTop: "20px", display: "inline-block" }}
+              >
                 <i className="fas fa-redo"></i>
                 Request New Reset Link
               </Link>
@@ -256,7 +304,9 @@ export default function ResetPasswordPage() {
                   disabled={isLoading}
                 />
                 <i
-                  className={`fas ${showPassword ? "fa-eye-slash" : "fa-eye"} input-icon password-toggle`}
+                  className={`fas ${
+                    showPassword ? "fa-eye-slash" : "fa-eye"
+                  } input-icon password-toggle`}
                   onClick={() => setShowPassword(!showPassword)}
                 ></i>
               </div>
@@ -276,7 +326,11 @@ export default function ResetPasswordPage() {
               <div className="input-group">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
-                  className={`form-input ${confirmPassword && password !== confirmPassword ? 'error' : ''}`}
+                  className={`form-input ${
+                    confirmPassword && password !== confirmPassword
+                      ? "error"
+                      : ""
+                  }`}
                   placeholder="Confirm New Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -284,7 +338,9 @@ export default function ResetPasswordPage() {
                   disabled={isLoading}
                 />
                 <i
-                  className={`fas ${showConfirmPassword ? "fa-eye-slash" : "fa-eye"} input-icon password-toggle`}
+                  className={`fas ${
+                    showConfirmPassword ? "fa-eye-slash" : "fa-eye"
+                  } input-icon password-toggle`}
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 ></i>
                 {confirmPassword && password !== confirmPassword && (
@@ -295,10 +351,16 @@ export default function ResetPasswordPage() {
                 )}
               </div>
 
-              <button 
-                type="submit" 
-                className={`reset-button ${isSuccess ? 'success' : ''}`}
-                disabled={isLoading || isSuccess || !passwordStrength || passwordStrength.score < 2 || password !== confirmPassword}
+              <button
+                type="submit"
+                className={`reset-button ${isSuccess ? "success" : ""}`}
+                disabled={
+                  isLoading ||
+                  isSuccess ||
+                  !passwordStrength ||
+                  passwordStrength.score < 2 ||
+                  password !== confirmPassword
+                }
               >
                 {isLoading ? (
                   <>
@@ -322,7 +384,7 @@ export default function ResetPasswordPage() {
 
           <div className="login-redirect">
             <p>
-              Remember your password?{' '}
+              Remember your password?{" "}
               <Link href="/login" className="login-link">
                 Sign in here
               </Link>

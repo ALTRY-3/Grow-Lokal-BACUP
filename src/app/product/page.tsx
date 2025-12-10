@@ -167,7 +167,13 @@ export default function ProductPage() {
       const data = await response.json();
 
       if (data.success) {
-        setProducts(data.products || []);
+        const products = (data.products || []).map((p: any) => ({
+          ...p,
+          viewCount: p.viewCount || 0,
+          averageRating: p.averageRating || 0,
+          totalReviews: p.totalReviews || 0,
+        }));
+        setProducts(products);
       } else {
         // Handle specific error cases
         if (response.status === 403) {

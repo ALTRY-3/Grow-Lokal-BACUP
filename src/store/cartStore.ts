@@ -74,7 +74,7 @@ export const useCartStore = create<CartStore>()(
           const response = await fetch('/api/cart');
           const data: CartApiResponse = await response.json();
 
-          if (data.success) {
+          if (data.success && data.data) {
             set({
               items: data.data.items || [],
               subtotal: data.data.subtotal || 0,
@@ -103,7 +103,7 @@ export const useCartStore = create<CartStore>()(
 
           const data: CartApiResponse = await response.json();
 
-          if (data.success) {
+          if (data.success && data.data) {
             set({
               items: data.data.items || [],
               subtotal: data.data.subtotal || 0,
@@ -136,7 +136,7 @@ export const useCartStore = create<CartStore>()(
 
           const data: CartApiResponse = await response.json();
 
-          if (data.success) {
+          if (data.success && data.data) {
             set({
               items: data.data.items || [],
               subtotal: data.data.subtotal || 0,
@@ -165,7 +165,7 @@ export const useCartStore = create<CartStore>()(
 
           const data: CartApiResponse = await response.json();
 
-          if (data.success) {
+          if (data.success && data.data) {
             set({
               items: data.data.items || [],
               subtotal: data.data.subtotal || 0,
@@ -230,7 +230,7 @@ export const useCartStore = create<CartStore>()(
 
           const data: CartApiResponse = await response.json();
 
-          if (data.success) {
+          if (data.success && data.data) {
             set({
               items: data.data.items || [],
               subtotal: data.data.subtotal || 0,

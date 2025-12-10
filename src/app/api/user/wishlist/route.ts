@@ -17,7 +17,7 @@ export async function GET(request: Request) {
     }
 
     await connectDB();
-    const user = await User.findById(session.user.id).populate({
+    const user = await (User as any).findById(session.user.id).populate({
       path: 'wishlist',
       select: '_id name price images thumbnailUrl artistName category craftType averageRating totalReviews isAvailable stock'
     });
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await User.findById(session.user.id);
+    const user = await (User as any).findById(session.user.id);
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found" },
@@ -164,7 +164,7 @@ export async function PUT(request: Request) {
       );
     }
 
-    const user = await User.findById(session.user.id);
+    const user = await (User as any).findById(session.user.id);
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found" },

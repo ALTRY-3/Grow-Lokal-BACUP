@@ -27,7 +27,7 @@ export async function GET() {
 
     await connectDB();
 
-    const user = await User.findOne({ email: session.user.email }).lean();
+    const user = await (User as any).findOne({ email: session.user.email }).lean();
     if (!user) {
       return NextResponse.json(
         { success: false, message: "User not found" },
@@ -209,3 +209,4 @@ export async function DELETE(request: NextRequest) {
     );
   }
 }
+

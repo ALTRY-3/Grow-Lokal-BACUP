@@ -205,7 +205,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user is an approved seller
     const User = require('@/models/User').default;
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     
     if (!user || !user.isSeller || user.sellerProfile?.applicationStatus !== 'approved') {
       return NextResponse.json(
@@ -296,3 +296,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

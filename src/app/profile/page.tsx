@@ -6,6 +6,7 @@ import React, {
   useRef,
   useMemo,
   useCallback,
+  Suspense,
 } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -33,10 +34,10 @@ import {
 } from "react-icons/fa";
 
 const ORDER_STATUS_LABELS: Record<string, string> = {
-  pending: "To Ship",      // Waiting for seller to confirm
-  processing: "To Ship",   // Legacy: same as pending
-  shipped: "To Receive",   // Seller confirmed, waiting for buyer to confirm receipt
-  delivered: "Completed",  // Buyer confirmed receipt
+  pending: "To Ship", // Waiting for seller to confirm
+  processing: "To Ship", // Legacy: same as pending
+  shipped: "To Receive", // Seller confirmed, waiting for buyer to confirm receipt
+  delivered: "Completed", // Buyer confirmed receipt
   cancelled: "Cancelled",
   failed: "Failed",
 };
@@ -2812,6 +2813,17 @@ const cityBarangayData: Record<string, string[]> = {
 };
 
 export default function ProfilePage() {
+  return (
+    <>
+      <Navbar />
+      <Suspense fallback={<div>Loading...</div>}>
+        <ProfilePageContent />
+      </Suspense>
+    </>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
@@ -3657,18 +3669,25 @@ export default function ProfilePage() {
   // Review Modal State
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewOrder, setReviewOrder] = useState<ProfileOrder | null>(null);
-  const [productReviews, setProductReviews] = useState<Record<string, { rating: number; comment: string }>>({});
-  const [reviewHoverRatings, setReviewHoverRatings] = useState<Record<string, number>>({});
+  const [productReviews, setProductReviews] = useState<
+    Record<string, { rating: number; comment: string }>
+  >({});
+  const [reviewHoverRatings, setReviewHoverRatings] = useState<
+    Record<string, number>
+  >({});
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   // Open review modal when clicking "Order Received"
   const handleConfirmReceipt = (orderId: string) => {
-    const order = orders.find(o => o._id === orderId);
+    const order = orders.find((o) => o._id === orderId);
     if (order) {
       setReviewOrder(order);
       // Initialize reviews for each product
-      const initialReviews: Record<string, { rating: number; comment: string }> = {};
-      order.items?.forEach(item => {
+      const initialReviews: Record<
+        string,
+        { rating: number; comment: string }
+      > = {};
+      order.items?.forEach((item) => {
         const productId = resolveProductId(item.productId);
         if (productId) {
           initialReviews[productId] = { rating: 5, comment: "" };
@@ -3681,17 +3700,17 @@ export default function ProfilePage() {
 
   // Update product rating
   const handleProductRating = (productId: string, rating: number) => {
-    setProductReviews(prev => ({
+    setProductReviews((prev) => ({
       ...prev,
-      [productId]: { ...prev[productId], rating }
+      [productId]: { ...prev[productId], rating },
     }));
   };
 
   // Update product comment
   const handleProductComment = (productId: string, comment: string) => {
-    setProductReviews(prev => ({
+    setProductReviews((prev) => ({
       ...prev,
-      [productId]: { ...prev[productId], comment }
+      [productId]: { ...prev[productId], comment },
     }));
   };
 
@@ -3703,35 +3722,48 @@ export default function ProfilePage() {
 
     try {
       // Submit reviews for each product
-      const reviewPromises = Object.entries(productReviews).map(async ([productId, review]) => {
-        if (review.rating > 0) {
-          try {
-            const response = await fetch(`/api/products/${productId}/reviews`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                rating: review.rating,
-                comment: review.comment.trim() || `Great product! ${review.rating} stars.`,
-                orderId: reviewOrder._id,
-              }),
-            });
-            const data = await response.json();
-            return { productId, success: data.success };
-          } catch (err) {
-            console.error(`Failed to submit review for product ${productId}:`, err);
-            return { productId, success: false };
+      const reviewPromises = Object.entries(productReviews).map(
+        async ([productId, review]) => {
+          if (review.rating > 0) {
+            try {
+              const response = await fetch(
+                `/api/products/${productId}/reviews`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    rating: review.rating,
+                    comment:
+                      review.comment.trim() ||
+                      `Great product! ${review.rating} stars.`,
+                    orderId: reviewOrder._id,
+                  }),
+                }
+              );
+              const data = await response.json();
+              return { productId, success: data.success };
+            } catch (err) {
+              console.error(
+                `Failed to submit review for product ${productId}:`,
+                err
+              );
+              return { productId, success: false };
+            }
           }
+          return { productId, success: true };
         }
-        return { productId, success: true };
-      });
+      );
 
       await Promise.all(reviewPromises);
 
       // Confirm order receipt
-      const confirmResponse = await fetch(`/api/user/orders/${reviewOrder._id}/confirm`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-      });
+      const confirmResponse = await fetch(
+        `/api/user/orders/${reviewOrder._id}/confirm`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
       const confirmData = await confirmResponse.json();
 
@@ -3741,12 +3773,17 @@ export default function ProfilePage() {
         setReviewOrder(null);
         setProductReviews({});
         setActiveOrdersTab("Completed");
-        setSuccessMessage("Thank you for your review! Order marked as completed.");
+        setSuccessMessage(
+          "Thank you for your review! Order marked as completed."
+        );
         setShowSuccessModal(true);
 
         // Refresh orders
-        const statusParam = activeOrdersTab === "All" ? "all" : activeOrdersTab.toLowerCase();
-        const ordersResponse = await fetch(`/api/user/orders?status=${statusParam}`);
+        const statusParam =
+          activeOrdersTab === "All" ? "all" : activeOrdersTab.toLowerCase();
+        const ordersResponse = await fetch(
+          `/api/user/orders?status=${statusParam}`
+        );
         const ordersData = await ordersResponse.json();
         if (ordersData.success) {
           setOrders(ordersData.data || []);
@@ -3769,10 +3806,13 @@ export default function ProfilePage() {
     setIsSubmittingReview(true);
 
     try {
-      const confirmResponse = await fetch(`/api/user/orders/${reviewOrder._id}/confirm`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-      });
+      const confirmResponse = await fetch(
+        `/api/user/orders/${reviewOrder._id}/confirm`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
 
       const confirmData = await confirmResponse.json();
 
@@ -3786,8 +3826,11 @@ export default function ProfilePage() {
         setShowSuccessModal(true);
 
         // Refresh orders
-        const statusParam = activeOrdersTab === "All" ? "all" : activeOrdersTab.toLowerCase();
-        const ordersResponse = await fetch(`/api/user/orders?status=${statusParam}`);
+        const statusParam =
+          activeOrdersTab === "All" ? "all" : activeOrdersTab.toLowerCase();
+        const ordersResponse = await fetch(
+          `/api/user/orders?status=${statusParam}`
+        );
         const ordersData = await ordersResponse.json();
         if (ordersData.success) {
           setOrders(ordersData.data || []);
@@ -3900,24 +3943,26 @@ export default function ProfilePage() {
   // Fetch seller order counts
   const fetchSellerOrderCounts = useCallback(async () => {
     if (!isSeller) return;
-    
+
     setIsLoadingSellerOrders(true);
     try {
       const response = await fetch("/api/seller/orders");
       const data = await response.json();
-      
+
       if (data.success && Array.isArray(data.data)) {
         const orders = data.data;
         const counts = {
-          toShip: orders.filter((o: { status: string }) => 
-            ["pending", "confirmed", "processing"].includes(o.status?.toLowerCase())
+          toShip: orders.filter((o: { status: string }) =>
+            ["pending", "confirmed", "processing"].includes(
+              o.status?.toLowerCase()
+            )
           ).length,
-          cancelled: orders.filter((o: { status: string }) => 
-            o.status?.toLowerCase() === "cancelled"
+          cancelled: orders.filter(
+            (o: { status: string }) => o.status?.toLowerCase() === "cancelled"
           ).length,
           returned: 0, // Placeholder for returns feature
-          pendingReview: orders.filter((o: { status: string }) => 
-            o.status?.toLowerCase() === "delivered"
+          pendingReview: orders.filter(
+            (o: { status: string }) => o.status?.toLowerCase() === "delivered"
           ).length,
         };
         setSellerOrderCounts(counts);
@@ -4679,9 +4724,9 @@ export default function ProfilePage() {
                 <div className="orders-nav">
                   {[
                     "All",
-                    "To Ship",       // Waiting for seller confirmation
-                    "To Receive",    // Seller confirmed, waiting for buyer
-                    "Completed",     // Buyer confirmed receipt
+                    "To Ship", // Waiting for seller confirmation
+                    "To Receive", // Seller confirmed, waiting for buyer
+                    "Completed", // Buyer confirmed receipt
                     "Cancelled",
                   ].map((tab) => (
                     <div
@@ -4855,7 +4900,9 @@ export default function ProfilePage() {
                                   onClick={() =>
                                     handleConfirmReceipt(order._id!)
                                   }
-                                  disabled={loadingConfirm || isSubmittingReview}
+                                  disabled={
+                                    loadingConfirm || isSubmittingReview
+                                  }
                                 >
                                   {(loadingConfirm || isSubmittingReview) &&
                                   pendingOrderId === order._id
@@ -4872,17 +4919,30 @@ export default function ProfilePage() {
                 {/* Review Modal */}
                 {showReviewModal && reviewOrder && (
                   <div className="modal-overlay" style={{ zIndex: 1000 }}>
-                    <div 
-                      className="modal-content" 
-                      style={{ 
-                        maxWidth: "600px", 
-                        maxHeight: "80vh", 
+                    <div
+                      className="modal-content"
+                      style={{
+                        maxWidth: "600px",
+                        maxHeight: "80vh",
                         overflow: "auto",
-                        padding: "24px"
+                        padding: "24px",
                       }}
                     >
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-                        <h3 style={{ margin: 0, fontSize: "1.25rem", color: "#333" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "20px",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            margin: 0,
+                            fontSize: "1.25rem",
+                            color: "#333",
+                          }}
+                        >
                           Rate Your Purchase
                         </h3>
                         <button
@@ -4893,16 +4953,17 @@ export default function ProfilePage() {
                             fontSize: "1.5rem",
                             cursor: "pointer",
                             color: "#666",
-                            padding: "4px"
+                            padding: "4px",
                           }}
                         >
                           ×
                         </button>
                       </div>
-                      
+
                       <div
                         style={{
-                          background: "linear-gradient(135deg, #fff9f2, #ffffff)",
+                          background:
+                            "linear-gradient(135deg, #fff9f2, #ffffff)",
                           border: "1px solid #f1e4d5",
                           borderRadius: "16px",
                           padding: "16px 18px",
@@ -4919,18 +4980,28 @@ export default function ProfilePage() {
                         >
                           Share quick feedback for this order
                         </p>
-                        <p style={{ color: "#55615a", margin: "4px 0 0", fontSize: "0.9rem" }}>
-                          Ratings help artisans and other buyers. Comments are optional.
+                        <p
+                          style={{
+                            color: "#55615a",
+                            margin: "4px 0 0",
+                            fontSize: "0.9rem",
+                          }}
+                        >
+                          Ratings help artisans and other buyers. Comments are
+                          optional.
                         </p>
                       </div>
 
                       {reviewOrder.items?.map((item, index) => {
                         const productId = resolveProductId(item.productId);
-                        const currentReview = productReviews[productId] || { rating: 5, comment: "" };
+                        const currentReview = productReviews[productId] || {
+                          rating: 5,
+                          comment: "",
+                        };
                         const hoverRating = reviewHoverRatings[productId] || 0;
-                        
+
                         return (
-                          <div 
+                          <div
                             key={productId || index}
                             style={{
                               background: "#fff",
@@ -4941,9 +5012,18 @@ export default function ProfilePage() {
                               boxShadow: "0 6px 18px rgba(0,0,0,0.06)",
                             }}
                           >
-                            <div style={{ display: "flex", gap: "14px", marginBottom: "14px" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                gap: "14px",
+                                marginBottom: "14px",
+                              }}
+                            >
                               <img
-                                src={item.image || "https://placehold.co/60x60?text=Product"}
+                                src={
+                                  item.image ||
+                                  "https://placehold.co/60x60?text=Product"
+                                }
                                 alt={item.name || "Product"}
                                 style={{
                                   width: "72px",
@@ -4954,11 +5034,24 @@ export default function ProfilePage() {
                                 }}
                               />
                               <div>
-                                <p style={{ fontWeight: 700, margin: "0 0 6px 0", color: "#2e3f36" }}>
+                                <p
+                                  style={{
+                                    fontWeight: 700,
+                                    margin: "0 0 6px 0",
+                                    color: "#2e3f36",
+                                  }}
+                                >
                                   {item.name || "Product"}
                                 </p>
-                                <p style={{ fontSize: "0.9rem", color: "#55615a", margin: 0 }}>
-                                  {item.artistName || "Artisan"} • Qty: {item.quantity || 1}
+                                <p
+                                  style={{
+                                    fontSize: "0.9rem",
+                                    color: "#55615a",
+                                    margin: 0,
+                                  }}
+                                >
+                                  {item.artistName || "Artisan"} • Qty:{" "}
+                                  {item.quantity || 1}
                                 </p>
                               </div>
                             </div>
@@ -4974,28 +5067,56 @@ export default function ProfilePage() {
                               >
                                 Your Rating:
                               </p>
-                              <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "6px",
+                                  alignItems: "center",
+                                }}
+                              >
                                 {[1, 2, 3, 4, 5].map((star) => (
                                   <button
                                     key={star}
                                     type="button"
-                                    onClick={() => handleProductRating(productId, star)}
-                                    onMouseEnter={() => setReviewHoverRatings(prev => ({ ...prev, [productId]: star }))}
-                                    onMouseLeave={() => setReviewHoverRatings(prev => ({ ...prev, [productId]: 0 }))}
+                                    onClick={() =>
+                                      handleProductRating(productId, star)
+                                    }
+                                    onMouseEnter={() =>
+                                      setReviewHoverRatings((prev) => ({
+                                        ...prev,
+                                        [productId]: star,
+                                      }))
+                                    }
+                                    onMouseLeave={() =>
+                                      setReviewHoverRatings((prev) => ({
+                                        ...prev,
+                                        [productId]: 0,
+                                      }))
+                                    }
                                     style={{
                                       background: "none",
                                       border: "none",
                                       cursor: "pointer",
                                       fontSize: "1.65rem",
-                                      color: star <= (hoverRating || currentReview.rating) ? "#FFC107" : "#ddd",
+                                      color:
+                                        star <=
+                                        (hoverRating || currentReview.rating)
+                                          ? "#FFC107"
+                                          : "#ddd",
                                       transition: "color 0.2s, transform 0.2s",
-                                      padding: "2px"
+                                      padding: "2px",
                                     }}
                                   >
                                     ★
                                   </button>
                                 ))}
-                                <span style={{ marginLeft: "8px", color: "#666", fontSize: "0.9rem" }}>
+                                <span
+                                  style={{
+                                    marginLeft: "8px",
+                                    color: "#666",
+                                    fontSize: "0.9rem",
+                                  }}
+                                >
                                   {currentReview.rating}/5
                                 </span>
                               </div>
@@ -5014,7 +5135,12 @@ export default function ProfilePage() {
                               </p>
                               <textarea
                                 value={currentReview.comment}
-                                onChange={(e) => handleProductComment(productId, e.target.value)}
+                                onChange={(e) =>
+                                  handleProductComment(
+                                    productId,
+                                    e.target.value
+                                  )
+                                }
                                 placeholder="Share your experience with this product..."
                                 style={{
                                   width: "100%",
@@ -5034,7 +5160,13 @@ export default function ProfilePage() {
                         );
                       })}
 
-                      <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          gap: "12px",
+                          marginTop: "24px",
+                        }}
+                      >
                         <button
                           onClick={handleSkipReview}
                           disabled={isSubmittingReview}
@@ -5046,8 +5178,10 @@ export default function ProfilePage() {
                             background: "#fff",
                             color: "#55615a",
                             fontSize: "0.95rem",
-                            cursor: isSubmittingReview ? "not-allowed" : "pointer",
-                            opacity: isSubmittingReview ? 0.7 : 1
+                            cursor: isSubmittingReview
+                              ? "not-allowed"
+                              : "pointer",
+                            opacity: isSubmittingReview ? 0.7 : 1,
                           }}
                         >
                           Skip Review
@@ -5060,16 +5194,21 @@ export default function ProfilePage() {
                             padding: "12px 20px",
                             borderRadius: "10px",
                             border: "none",
-                            background: "linear-gradient(135deg, #af7928, #8f6322)",
+                            background:
+                              "linear-gradient(135deg, #af7928, #8f6322)",
                             boxShadow: "0 6px 16px rgba(175, 121, 40, 0.35)",
                             color: "#fff",
                             fontSize: "0.95rem",
                             fontWeight: 700,
-                            cursor: isSubmittingReview ? "not-allowed" : "pointer",
-                            opacity: isSubmittingReview ? 0.7 : 1
+                            cursor: isSubmittingReview
+                              ? "not-allowed"
+                              : "pointer",
+                            opacity: isSubmittingReview ? 0.7 : 1,
                           }}
                         >
-                          {isSubmittingReview ? "Submitting..." : "Submit Review & Complete Order"}
+                          {isSubmittingReview
+                            ? "Submitting..."
+                            : "Submit Review & Complete Order"}
                         </button>
                       </div>
                     </div>
@@ -6601,7 +6740,10 @@ export default function ProfilePage() {
           )}
 
           {activeSection === "selling" && !sellerStatusResolved && (
-            <div className="profile-details-inner-box" style={{ padding: "24px" }}>
+            <div
+              className="profile-details-inner-box"
+              style={{ padding: "24px" }}
+            >
               Loading seller status…
             </div>
           )}
@@ -6880,44 +7022,58 @@ export default function ProfilePage() {
                       View All →
                     </button>
                   </div>
-                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                  <div
+                    style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}
+                  >
                     {[
-                      { 
-                        label: "To Ship", 
-                        value: isLoadingSellerOrders ? "..." : sellerOrderCounts.toShip, 
+                      {
+                        label: "To Ship",
+                        value: isLoadingSellerOrders
+                          ? "..."
+                          : sellerOrderCounts.toShip,
                         color: "#af7928",
                         bgColor: "#FFF8E1",
                         tab: "To Ship",
-                        icon: "📦"
+                        icon: "📦",
                       },
-                      { 
-                        label: "Cancelled", 
-                        value: isLoadingSellerOrders ? "..." : sellerOrderCounts.cancelled, 
+                      {
+                        label: "Cancelled",
+                        value: isLoadingSellerOrders
+                          ? "..."
+                          : sellerOrderCounts.cancelled,
                         color: "#e74c3c",
                         bgColor: "#FFEBEE",
                         tab: "Cancelled",
-                        icon: "❌"
+                        icon: "❌",
                       },
-                      { 
-                        label: "Returns", 
-                        value: isLoadingSellerOrders ? "..." : sellerOrderCounts.returned, 
+                      {
+                        label: "Returns",
+                        value: isLoadingSellerOrders
+                          ? "..."
+                          : sellerOrderCounts.returned,
                         color: "#888",
                         bgColor: "#f5f5f5",
                         tab: "All",
-                        icon: "↩️"
+                        icon: "↩️",
                       },
-                      { 
-                        label: "Completed", 
-                        value: isLoadingSellerOrders ? "..." : sellerOrderCounts.pendingReview, 
+                      {
+                        label: "Completed",
+                        value: isLoadingSellerOrders
+                          ? "..."
+                          : sellerOrderCounts.pendingReview,
                         color: "#45956a",
                         bgColor: "#E8F5E9",
                         tab: "Completed",
-                        icon: "✅"
+                        icon: "✅",
                       },
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        onClick={() => router.push(`/myorders?tab=${encodeURIComponent(stat.tab)}`)}
+                        onClick={() =>
+                          router.push(
+                            `/myorders?tab=${encodeURIComponent(stat.tab)}`
+                          )
+                        }
                         style={{
                           flex: "1 1 calc(25% - 12px)",
                           minWidth: "100px",
@@ -6933,7 +7089,8 @@ export default function ProfilePage() {
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.transform = "translateY(-2px)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
+                          e.currentTarget.style.boxShadow =
+                            "0 4px 12px rgba(0,0,0,0.1)";
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = "translateY(0)";
@@ -6943,7 +7100,9 @@ export default function ProfilePage() {
                         tabIndex={0}
                         aria-label={`View ${stat.label} orders`}
                       >
-                        <span style={{ fontSize: 20, marginBottom: 4 }}>{stat.icon}</span>
+                        <span style={{ fontSize: 20, marginBottom: 4 }}>
+                          {stat.icon}
+                        </span>
                         <span
                           style={{
                             fontSize: 24,

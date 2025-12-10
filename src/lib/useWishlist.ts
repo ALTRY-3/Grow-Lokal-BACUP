@@ -35,7 +35,7 @@ export function useWishlist() {
       const data = await response.json();
       
       if (data.success) {
-        const wishlistIds = data.data.map((product: any) => 
+        const wishlistIds: string[] = data.data.map((product: any) => 
           typeof product === 'string' ? product : product._id
         );
         const newWishlist = new Set(wishlistIds);
@@ -63,7 +63,7 @@ export function useWishlist() {
     try {
       const saved = localStorage.getItem('wishlist');
       if (saved) {
-        const wishlistIds = JSON.parse(saved);
+        const wishlistIds: string[] = JSON.parse(saved);
         const newWishlist = new Set(wishlistIds);
         setWishlist(newWishlist);
         currentWishlistRef.current = newWishlist;

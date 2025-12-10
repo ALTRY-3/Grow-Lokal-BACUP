@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FaSpinner } from "react-icons/fa";
 import Navbar from "@/components/Navbar";
@@ -10,6 +10,18 @@ import "../status.css";
 type StatusState = "verifying" | "success" | "error";
 
 export default function PayMongoSuccessPage() {
+  return (
+    <>
+      <Navbar />
+      <Suspense fallback={<div>Loading...</div>}>
+        <SuccessContent />
+      </Suspense>
+      <Footer />
+    </>
+  );
+}
+
+function SuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get("orderId");
@@ -20,7 +32,9 @@ export default function PayMongoSuccessPage() {
   const isMock = searchParams.get("mock") === "1";
 
   const [status, setStatus] = useState<StatusState>("verifying");
-  const [message, setMessage] = useState("Confirming your payment with PayMongo...");
+  const [message, setMessage] = useState(
+    "Confirming your payment with PayMongo..."
+  );
   const [shouldPoll, setShouldPoll] = useState(false);
 
   useEffect(() => {
@@ -66,7 +80,10 @@ export default function PayMongoSuccessPage() {
           return;
         }
 
-        if (paymentStatus === "pending" || data.data?.requiresWebhookConfirmation) {
+        if (
+          paymentStatus === "pending" ||
+          data.data?.requiresWebhookConfirmation
+        ) {
           setStatus("verifying");
           setMessage(
             "Payment authorized. Waiting for PayMongo to finalize the charge..."
@@ -79,7 +96,9 @@ export default function PayMongoSuccessPage() {
       } catch (err: any) {
         console.error("PayMongo confirmation error:", err);
         setStatus("error");
-        setMessage(err.message || "Unable to confirm payment. Please contact support.");
+        setMessage(
+          err.message || "Unable to confirm payment. Please contact support."
+        );
       }
     };
 
@@ -98,7 +117,8 @@ export default function PayMongoSuccessPage() {
           return;
         }
         const data = await response.json();
-        const paymentStatus: string | undefined = data.data?.paymentDetails?.status;
+        const paymentStatus: string | undefined =
+          data.data?.paymentDetails?.status;
         if (paymentStatus === "paid") {
           setShouldPoll(false);
           setStatus("success");
@@ -120,34 +140,33 @@ export default function PayMongoSuccessPage() {
   };
 
   return (
-    <>
-      <Navbar />
-      <main className="payment-status-wrapper">
-        <div className={`payment-status-card ${status}`}>
-          <div className="payment-status-icon">{renderIcon()}</div>
-          <h1>
-            {status === "success"
-              ? "Payment Successful"
-              : status === "error"
-              ? "Payment Issue"
-              : "Finalizing Payment"}
-          </h1>
-          <p>{message}</p>
-          <div className="payment-status-actions">
-            <button
-              className="primary-btn"
-              onClick={() => router.push(`/orders/${orderId || ""}`)}
-              disabled={!orderId}
-            >
-              View Order
-            </button>
-            <button className="secondary-btn" onClick={() => router.push("/marketplace")}>
-              Back to Marketplace
-            </button>
-          </div>
+    <main className="payment-status-wrapper">
+      <div className={`payment-status-card ${status}`}>
+        <div className="payment-status-icon">{renderIcon()}</div>
+        <h1>
+          {status === "success"
+            ? "Payment Successful"
+            : status === "error"
+            ? "Payment Issue"
+            : "Finalizing Payment"}
+        </h1>
+        <p>{message}</p>
+        <div className="payment-status-actions">
+          <button
+            className="primary-btn"
+            onClick={() => router.push(`/orders/${orderId || ""}`)}
+            disabled={!orderId}
+          >
+            View Order
+          </button>
+          <button
+            className="secondary-btn"
+            onClick={() => router.push("/marketplace")}
+          >
+            Back to Marketplace
+          </button>
         </div>
-      </main>
-      <Footer />
-    </>
+      </div>
+    </main>
   );
 }

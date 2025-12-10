@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await (User as any).findOne({ email });
     if (existingUser) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Create new user (email starts as unverified)
-    const user = await User.create({
+    const user = await (User as any).create({
       name,
       fullName: name, // Store fullName as well for profile display
       email,
@@ -253,3 +253,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

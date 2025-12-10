@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useCallback,
+  Suspense,
 } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
@@ -586,6 +587,18 @@ function ManageBookingModal({
 }
 
 export default function EventsPage() {
+  return (
+    <>
+      <Navbar />
+      <Suspense fallback={<div>Loading events...</div>}>
+        <EventsContent />
+      </Suspense>
+      <Footer />
+    </>
+  );
+}
+
+function EventsContent() {
   const [date, setDate] = useState<Date>(new Date());
   const [reminders, setReminders] = useState<string[]>([]);
   const [subscribedEventIds, setSubscribedEventIds] = useState<Set<number>>(
@@ -1161,8 +1174,6 @@ export default function EventsPage() {
 
   return (
     <div className="events-page">
-      <Navbar />
-
       <main role="main">
         {/* Update Hero Section */}
         <section className="events-hero">
@@ -1878,8 +1889,6 @@ export default function EventsPage() {
         isCancelling={isManageCancelling}
         errorMessage={manageModalError}
       />
-
-      <Footer />
     </div>
   );
 }

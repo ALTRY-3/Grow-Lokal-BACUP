@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     }
 
     await connectDB();
-    const user = await User.findById(session.user.id).select("-password");
+    const user = await (User as any).findById(session.user.id).select("-password");
 
     if (!user) {
       return NextResponse.json(
@@ -70,7 +70,7 @@ export async function PUT(request: Request) {
     const { fullName, phone, address, gender, profilePicture, dateOfBirth } = body;
 
     await connectDB();
-    const user = await User.findByIdAndUpdate(
+    const user = await (User as any).findByIdAndUpdate(
       session.user.id,
       {
         fullName,
@@ -111,3 +111,4 @@ export async function PUT(request: Request) {
     );
   }
 }
+

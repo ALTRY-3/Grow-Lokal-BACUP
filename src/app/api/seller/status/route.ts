@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     await dbConnect();
 
-    const user = await User.findOne({ email: session.user.email })
+    const user = await (User as any).findOne({ email: session.user.email })
       .select('isSeller sellerProfile');
 
     if (!user) {
@@ -47,3 +47,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

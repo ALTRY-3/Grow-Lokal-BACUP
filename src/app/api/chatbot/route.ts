@@ -136,7 +136,7 @@ async function getFeaturedArtisans(limit: number = 4) {
     // Get full seller details from User collection
     const enrichedArtisans = await Promise.all(
       artisans.map(async (artisan: any) => {
-        const sellerInfo = await User.findById(artisan._id)
+        const sellerInfo = await (User as any).findById(artisan._id)
           .select('name sellerProfile.shopName sellerProfile.sellerStory sellerProfile.sellerPhoto image')
           .lean() as any;
         
@@ -172,7 +172,7 @@ function formatArtisansForAI(artisans: any[]): string {
 async function findArtisanByName(term: string) {
   await connectDB();
   // Try by User first
-  const byUser = await User.findOne({
+  const byUser = await (User as any).findOne({
     $or: [
       { name: { $regex: term, $options: 'i' } },
       { 'sellerProfile.shopName': { $regex: term, $options: 'i' } },
@@ -184,7 +184,7 @@ async function findArtisanByName(term: string) {
     .select('artistId artistName')
     .lean() as any;
   if (byProduct?.artistId) {
-    const u = await User.findById(byProduct.artistId).select('name image sellerProfile').lean() as any;
+    const u = await (User as any).findById(byProduct.artistId).select('name image sellerProfile').lean() as any;
     if (u) return u;
   }
   return null;
@@ -863,3 +863,4 @@ export async function GET() {
     data: { status: hasApiKey ? 'online' : 'offline', name: 'KaLokal', model: GROQ_MODEL },
   });
 }
+

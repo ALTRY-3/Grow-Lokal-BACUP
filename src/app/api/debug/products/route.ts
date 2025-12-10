@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     await connectDB()
 
     // Get user and check status
-    const user = await User.findOne({ email: session.user.email })
+    const user = await (User as any).findOne({ email: session.user.email })
     
     if (!user) {
       return NextResponse.json({

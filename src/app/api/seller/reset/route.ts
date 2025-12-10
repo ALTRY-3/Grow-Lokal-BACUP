@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     await dbConnect();
 
     // Reset seller status for testing
-    const updatedUser = await User.findOneAndUpdate(
+    const updatedUser = await (User as any).findOneAndUpdate(
       { email: session.user.email },
       {
         $unset: {

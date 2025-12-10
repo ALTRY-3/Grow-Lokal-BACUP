@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get seller user
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     
     if (!user) {
       return NextResponse.json(
@@ -245,7 +245,7 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    const user = await User.findOne({ email: session.user.email });
+    const user = await (User as any).findOne({ email: session.user.email });
     
     if (!user || !user.isSeller) {
       return NextResponse.json(
@@ -348,3 +348,4 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+

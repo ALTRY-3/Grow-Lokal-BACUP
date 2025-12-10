@@ -7,6 +7,7 @@ declare module "next-auth" {
       isSeller?: boolean;
       shopName?: string | null;
       rememberMe?: boolean;
+      isEmailVerified?: boolean;
     };
   }
 
@@ -15,6 +16,7 @@ declare module "next-auth" {
     isSeller?: boolean;
     shopName?: string | null;
     rememberMe?: boolean;
+    isEmailVerified?: boolean;
   }
 }
 

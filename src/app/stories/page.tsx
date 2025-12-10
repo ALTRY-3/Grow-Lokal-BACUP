@@ -6,7 +6,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { FaStore, FaMapMarkerAlt } from "react-icons/fa";
 import "./stories.css";
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 // Use the same DiceBear avatar placeholder as in home
@@ -118,6 +118,18 @@ function getExcerptLimit() {
 }
 
 export default function StoriesPage() {
+  return (
+    <>
+      <Navbar />
+      <Suspense fallback={<div>Loading...</div>}>
+        <StoriesPageContent />
+      </Suspense>
+      <Footer />
+    </>
+  );
+}
+
+function StoriesPageContent() {
   const [dynamicStories, setDynamicStories] = useState<Story[]>([]);
   const [storiesLoading, setStoriesLoading] = useState(true);
   const [storiesError, setStoriesError] = useState<string | null>(null);
@@ -140,7 +152,9 @@ export default function StoriesPage() {
       } catch (error) {
         console.error("Stories fetch error", error);
         setStoriesError(
-          error instanceof Error ? error.message : "Failed to load artisan stories"
+          error instanceof Error
+            ? error.message
+            : "Failed to load artisan stories"
         );
       } finally {
         setStoriesLoading(false);
@@ -175,7 +189,6 @@ export default function StoriesPage() {
 
   return (
     <>
-      <Navbar />
       <div className="stories-page">
         <div className="stories-carousel">
           <ImageCarousel autoSlide={true} slideInterval={3000} />
@@ -197,7 +210,9 @@ export default function StoriesPage() {
             </div>
           )}
           {!storiesLoading && !storiesError && combinedStories.length === 0 && (
-            <div className="stories-state">No artisan stories yet. Check back soon!</div>
+            <div className="stories-state">
+              No artisan stories yet. Check back soon!
+            </div>
           )}
           {combinedStories.map((story) => {
             const limit = getExcerptLimit();
@@ -270,7 +285,11 @@ export default function StoriesPage() {
                   </p>
                 </div>
                 <img
-                  src={story.img || story.profilePic || getProfileAvatar(story.artist)}
+                  src={
+                    story.img ||
+                    story.profilePic ||
+                    getProfileAvatar(story.artist)
+                  }
                   alt={story.title}
                   className="story-img-wide"
                 />
@@ -279,7 +298,6 @@ export default function StoriesPage() {
           })}
         </div>
       </div>
-      <Footer />
     </>
   );
 }

@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // Find user by email
-    const user = await User.findOne({ 
+    const user = await (User as any).findOne({ 
       email: email.toLowerCase(),
       emailVerified: true // Only allow password reset for verified users
     });
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const tokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 
     // Update user with password reset token (mark as unused)
-    await User.findByIdAndUpdate(user._id, {
+    await (User as any).findByIdAndUpdate(user._id, {
       passwordResetToken: resetToken,
       passwordResetExpires: tokenExpires,
       passwordResetTokenUsed: false, // Mark as unused (single-use token)

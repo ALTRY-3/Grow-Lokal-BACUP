@@ -702,7 +702,7 @@ export default function Navbar() {
                           e.stopPropagation();
 
                           // Check if user is verified
-                          if (!session?.user?.isEmailVerified) {
+                          if (!(session?.user as any)?.emailVerified) {
                             alert(
                               "Please verify your email to proceed with checkout. Redirecting to login..."
                             );

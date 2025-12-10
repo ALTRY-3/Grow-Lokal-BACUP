@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     await connectDB();
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await (User as any).findOne({ email: email.toLowerCase() });
 
     if (!user) {
       // Don't reveal if user exists
@@ -43,3 +43,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ requiresCaptcha: false });
   }
 }
+

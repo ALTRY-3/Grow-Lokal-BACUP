@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user with matching token
-    const user = await User.findOne({
+    const user = await (User as any).findOne({
       email: email.toLowerCase(),
       passwordResetToken: token,
     });

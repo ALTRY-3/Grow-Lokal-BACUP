@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     await connectDB()
 
     // Get user and verify seller status
-    const user = await User.findOne({ email: session.user.email })
+    const user = await (User as any).findOne({ email: session.user.email })
     
     if (!user) {
       return NextResponse.json(

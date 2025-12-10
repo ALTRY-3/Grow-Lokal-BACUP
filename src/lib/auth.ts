@@ -105,7 +105,7 @@ export const authOptions: NextAuthOptions = {
 
           await connectDB();
           
-          const user = await User.findOne({ email: credentials.email }).select('+password');
+          const user = await (User as any).findOne({ email: credentials.email }).select('+password');
           
           if (!user) {
             // Record failed login attempt
@@ -158,14 +158,14 @@ export const authOptions: NextAuthOptions = {
           await connectDB();
           
           // Check if user already exists by providerId
-          let existingUser = await User.findOne({
+          let existingUser = await (User as any).findOne({
             providerId: account.providerAccountId,
             provider: account.provider
           });
           
           if (!existingUser) {
             // Create new user
-            await User.create({
+            await (User as any).create({
               name: user.name,
               email: user.email,
               provider: account.provider,
@@ -231,14 +231,14 @@ export const authOptions: NextAuthOptions = {
             // Only query if token.id is a valid MongoDB ObjectId (24 hex chars)
             const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(String(token.id));
             if (isValidObjectId) {
-              const userRecord = await User.findById(token.id).select('isSeller sellerProfile');
+              const userRecord = await (User as any).findById(token.id).select('isSeller sellerProfile');
               if (userRecord) {
                 user.isSeller = userRecord.isSeller || false;
                 user.shopName = userRecord.sellerProfile?.shopName || null;
               }
             } else {
               // For OAuth users with non-MongoDB IDs, query by email
-              const userRecord = await User.findOne({ email: token.email }).select('isSeller sellerProfile');
+              const userRecord = await (User as any).findOne({ email: token.email }).select('isSeller sellerProfile');
               if (userRecord) {
                 user.isSeller = userRecord.isSeller || false;
                 user.shopName = userRecord.sellerProfile?.shopName || null;
@@ -313,3 +313,4 @@ export const authOptions: NextAuthOptions = {
     updateAge: 24 * 60 * 60, // Update session every 24 hours
   },
 };
+

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await (User as any).findOne({ email: email.toLowerCase() });
     
     if (!user) {
       return NextResponse.json(
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Mark email as verified and clear token data
-    await User.findByIdAndUpdate(user._id, {
+    await (User as any).findByIdAndUpdate(user._id, {
       emailVerified: true,
       emailVerificationToken: null,
       emailVerificationExpires: null,

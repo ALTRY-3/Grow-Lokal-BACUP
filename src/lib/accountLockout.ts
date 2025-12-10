@@ -20,7 +20,7 @@ export async function checkAccountLockout(email: string): Promise<LockoutResult>
   try {
     await connectDB();
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await (User as any).findOne({ email: email.toLowerCase() });
 
     if (!user) {
       return { isLocked: false, failedAttempts: 0 };
@@ -74,7 +74,7 @@ export async function recordFailedLogin(email: string): Promise<LockoutResult> {
   try {
     await connectDB();
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await (User as any).findOne({ email: email.toLowerCase() });
 
     if (!user) {
       // Don't reveal if user exists
@@ -160,3 +160,4 @@ export async function unlockAccount(email: string): Promise<boolean> {
     return false;
   }
 }
+

@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     await connectDB()
 
     // Get user with full details
-    const user = await User.findOne({ email: session.user.email }).lean() as IUser | null
+    const user = await (User as any).findOne({ email: session.user.email }).lean() as IUser | null
     
     if (!user) {
       return NextResponse.json({
